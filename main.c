@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "registers.h"
+#include "ram.h"
 
 
 // Reads bytes from the specified file and outputs those bytes as a pointer to an array
@@ -27,17 +28,17 @@ char* read_commands(char* filename) {
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
-        printf("Incorrect number of arguments!\nUSAGE: emulator <filename>");
-        exit(2);
+        printf("Incorrect number of arguments!\nUSAGE: emulator <filename>\n");
+        exit(-1);
     }
-    
+
+    Register* register_file = init_registers();
+    RAM* ram = init_RAM(1024);
+
     char* commands = read_commands(argv[1]);
     for (long i = 0; i < 0x50; i++) {
         printf("%04X: %02X\n", i, commands[i] & 0xFF);
     }
-    
-
-    Register* register_file = init_registers();
     
     free(register_file);
     free(commands);
