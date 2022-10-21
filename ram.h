@@ -6,7 +6,7 @@
 Represents a node in a linked list in the RAM hashmap data structure.
 */
 typedef struct RAMKeyValuePair {
-    char* key;
+    int key;
     short value;
     struct RAMKeyValuePair* next;
 } RAMKeyValuePair;
@@ -24,5 +24,7 @@ typedef struct RAM {
 
 
 RAM* init_RAM(long hash_capacity);
+void add_to_ram(RAM* ram, unsigned int key, short value);
+short get_from_ram(RAM* ram, unsigned int key);
 
 #endif

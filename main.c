@@ -36,9 +36,6 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     char* commands = read_commands(argv[1]);
-    for (long i = 0; i < 0x50; i++) {
-        printf("%04X: %02X\n", i, commands[i] & 0xFF);
-    }
     
     free(register_file);
     free(commands);

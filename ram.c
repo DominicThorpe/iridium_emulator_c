@@ -14,6 +14,7 @@ corresponding linked list. If the address is not in the hashmap, it will return 
 
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "ram.h"
 
 #define FALSE 0
@@ -46,7 +47,43 @@ RAM* init_RAM(long hash_capacity) {
 }
 
 
-
 long hash_function(int input) {
     return abs(input) % ram_hash_capacity;
+}
+
+
+/*
+Takes a pointer to the RAM which is modified in-place (changes take effect outside the function)
+and then checks the relevant linked list according to the hash function if an element with that key 
+exists. If such an element does already exist, it is returned, otherwise it adds a RAMKeyValuePair 
+to the RAM hashmap with the key and value to the end of the linked list in the relevant bucket for
+that hash.
+*/
+void add_to_ram(RAM* ram, unsigned int key, short value) {
+    long hash = hash_function(key);
+    RAMKeyValuePair* pair = malloc(sizeof(RAMKeyValuePair));
+    pair->key = key;
+    pair->value = value;
+    pair->next = NULL;
+
+    if (ram->buckets[hash] == NULL)
+        ram->buckets[hash] = pair;
+    else
+        printf("NOT IMPLEMENTED\n");
+}
+
+
+/*
+Takes a pointer to the RAM and finds the correct bucket for that key. Goes through each item in
+the corresponding linked list and returns the value of the first RAMKeyValuePair it finds with
+the correct key. 
+*/
+short get_from_ram(RAM* ram, unsigned int key) {
+    long hash = hash_function(key);
+    if (ram->buckets[hash] != NULL && ram->buckets[hash]->key == key)
+        return ram->buckets[hash]->value;
+    else
+        printf("DID NOT IMMEDIATELY FIND KEY %u\tFOUND: %p\n", key, ram->buckets[hash]);
+    
+    return -1;
 }
