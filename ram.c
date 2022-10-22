@@ -71,7 +71,16 @@ void add_to_ram(RAM* ram, unsigned int key, short value) {
     else {
         RAMKeyValuePair* current_kvp = ram->buckets[hash];
         while (current_kvp->next != NULL) {
+            if (current_kvp->key == key) {
+                current_kvp->value = value;
+                return;
+            }
+
             current_kvp = current_kvp->next;
+            if (current_kvp->key == key) {
+                current_kvp->value = value;
+                return;
+            }
         }
 
         current_kvp->next = pair;
@@ -98,10 +107,8 @@ short get_from_ram(RAM* ram, unsigned int key) {
             if (current_kvp->key == key)
                 return current_kvp->value;
         }
-        
-
-        printf("COULD NOT FIND KEY %u\tFOUND: %p\n", key, ram->buckets[hash]);
     }
     
-    return -1;
+    printf("Could not get key %u from RAM\n", key);
+    exit(-3);
 }
