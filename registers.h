@@ -1,8 +1,9 @@
 #ifndef REGISTERS
 #define REGISTERS
 
-typedef struct Register {
-    unsigned short word;
+typedef union Register {
+    unsigned short word_16;
+    unsigned int word_32;
 } Register;
 
 
