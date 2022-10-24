@@ -20,6 +20,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
     } else {
         switch (nibble_1) {
             case 0x0: // NOP
+                1 + 1;
                 break;
             
             case 0x1: // ADD
@@ -40,6 +41,20 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x2: // SUB
+                operand_1 = nibble_3 < 12 ? 
+                                get_register(nibble_3, registers).word_16 : 
+                                get_register(nibble_3, registers).word_32;
+                operand_2 = nibble_4 < 12 ? 
+                                get_register(nibble_4, registers).word_16 : 
+                                get_register(nibble_4, registers).word_32;
+                
+                if (nibble_2 < 12) {
+                    result_reg.word_16 = operand_1 - operand_2;
+                } else {
+                    result_reg.word_32 = operand_1 - operand_2;
+                }
+
+                update_register(nibble_2, result_reg, registers);
                 break;
 
             case 0x3: // ADDI
@@ -56,7 +71,18 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 update_register(nibble_2, result_reg, registers);
                 break;
             
-            case 0x4:
+            case 0x4: // SUBI
+                operand_1 = nibble_3 < 12 ? 
+                                get_register(nibble_3, registers).word_16 : 
+                                get_register(nibble_3, registers).word_32;
+
+                if (nibble_2 < 12) {
+                    result_reg.word_16 = operand_1 - nibble_4;
+                } else {
+                    result_reg.word_32 = operand_1 - nibble_4;
+                }
+
+                update_register(nibble_2, result_reg, registers);
                 break;
             
             case 0x5:
