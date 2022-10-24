@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "registers.h"
 #include "ram.h"
+#include "control_unit.h"
 
 
 // Reads bytes from the specified file and outputs those bytes as a pointer to an array
