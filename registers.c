@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "registers.h"
 
 
@@ -17,5 +18,65 @@ Register* init_registers() {
     }
 
     return register_file;
+}
+
+
+/*
+Takes the index of a register, the new value, and a pointer to the array of registers, and changes 
+the value in the register to the new value. Will change the register, represented by a Union, to the
+field appropriate to that register, which is `short` if index < 12, and `int` otherwise.
+
+The register with index 0 will always be 0 and cannot be changed.
+*/
+void update_register(int index, Register new_value, Register* registers) {
+    if (index == 0)
+        return;
+
+    if (index < 11) {
+        registers[index].word_16 = new_value.word_16;
+    } else if (index < 16) {
+        registers[index].word_32 = new_value.word_32;
+    } else {
+        exit(-4);
+    }
+}
+
+
+/*
+Takes the index of a register and the array of register, and returns a `Register` containing the value of
+the register with that index. The field containing the value will be `short` if the index < 12, and `int`
+otherwise.
+
+The register at index 0 will always return 0.
+*/
+Register get_register(int index, Register* registers) {
+    if (index == 0) {
+        Register zero;
+        zero.word_32 = 0;
+        return zero;
+    }
+
+    if (index < 11) {
+        return registers[index];
+    } else if (index < 16) {
+        return registers[index];
+    } else {
+        exit(-4);
+    }
+}
+
+
+/*
+Takes the array of registers (which should have length 16), and prints their values.
+*/
+void print_registers(Register* registers) {
+    for (int i = 0; i < 12; i++) {
+        printf("16-Bit Register %X: 0x%04X\n", i, registers[i].word_16);
+    }
+
+    for (int i = 12; i < 16; i++) {
+        printf("32-Bit Register %X: 0x%04X\n", i, registers[i].word_32);
+    }
+        
 }
 

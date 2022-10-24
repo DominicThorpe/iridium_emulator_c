@@ -8,5 +8,8 @@ typedef union Register {
 
 
 Register* init_registers();
+void update_register(int index, Register new_value, Register* registers);
+Register get_register(int index, Register* registers);
+void print_registers(Register* registers);
 
 #endif
