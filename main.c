@@ -37,10 +37,11 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     char* commands = read_commands(argv[1]);
-    execute_command(0x3105, ram, register_file);
-    execute_command(0x3208, ram, register_file);
-    execute_command(0x2321, ram, register_file);
-    execute_command(0x4413, ram, register_file);
+    execute_command(0x310F, ram, register_file);
+    execute_command(0x320C, ram, register_file);
+    execute_command(0x5112, ram, register_file);
+    execute_command(0x3204, ram, register_file);
+    execute_command(0x6112, ram, register_file);
     print_registers(register_file);
     
     free(register_file);

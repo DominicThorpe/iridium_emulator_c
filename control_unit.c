@@ -85,13 +85,56 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 update_register(nibble_2, result_reg, registers);
                 break;
             
-            case 0x5:
+            case 0x5: // SLL
+                operand_1 = nibble_3 < 12 ? 
+                                get_register(nibble_3, registers).word_16 : 
+                                get_register(nibble_3, registers).word_32;
+                operand_2 = nibble_4 < 12 ? 
+                                get_register(nibble_4, registers).word_16 : 
+                                get_register(nibble_4, registers).word_32;
+                
+                if (nibble_2 < 12) {
+                    result_reg.word_16 = operand_1 << operand_2;
+                } else {
+                    result_reg.word_32 = operand_1 << operand_2;
+                }
+
+                update_register(nibble_2, result_reg, registers);
                 break;
             
-            case 0x6:
+            case 0x6: // SRL
+                operand_1 = nibble_3 < 12 ? 
+                                get_register(nibble_3, registers).word_16 : 
+                                get_register(nibble_3, registers).word_32;
+                operand_2 = nibble_4 < 12 ? 
+                                get_register(nibble_4, registers).word_16 : 
+                                get_register(nibble_4, registers).word_32;
+                
+                unsigned short unsigned_1 = operand_1;
+                if (nibble_2 < 12) {
+                    result_reg.word_16 = unsigned_1 >> operand_2;
+                } else {
+                    result_reg.word_32 = unsigned_1 >> operand_2;
+                }
+
+                update_register(nibble_2, result_reg, registers);
                 break;
             
-            case 0x7:
+            case 0x7: // SRA
+                operand_1 = nibble_3 < 12 ? 
+                                get_register(nibble_3, registers).word_16 : 
+                                get_register(nibble_3, registers).word_32;
+                operand_2 = nibble_4 < 12 ? 
+                                get_register(nibble_4, registers).word_16 : 
+                                get_register(nibble_4, registers).word_32;
+                
+                if (nibble_2 < 12) {
+                    result_reg.word_16 = (short)operand_1 >> (short)operand_2;
+                } else {
+                    result_reg.word_32 = operand_1 >> operand_2;
+                }
+
+                update_register(nibble_2, result_reg, registers);
                 break;
             
             case 0x8:
