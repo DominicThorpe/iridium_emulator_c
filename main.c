@@ -37,9 +37,12 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     char* commands = read_commands(argv[1]);
-    execute_command(0x3105, ram, register_file); // $g0 = 0b0101
-    execute_command(0x3203, ram, register_file); // $g1 = 0b0011
-    execute_command(0x8312, ram, register_file); // $g2 = ~($g0 & $g1)
+    execute_command(0x3104, ram, register_file); // $g0 = 0x0004
+    execute_command(0x3208, ram, register_file); // $g1 = 0x0008
+    execute_command(0x5221, ram, register_file); // $g1 << 4
+    execute_command(0x3225, ram, register_file); // $g1 += 5
+    execute_command(0x5221, ram, register_file); // $g1 << 4
+    execute_command(0xD2AA, ram, register_file); // $g1 += 5
     print_registers(register_file);
     
     free(register_file);

@@ -24,6 +24,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
     instr_components.nibble_4 = command & 0x000F;
 
     int operand_1, operand_2, operand_3;
+    int immediate, mask;
     Register result_reg;
 
     if (instr_components.nibble_1 == 0xF) { // 8-bit opcode
@@ -157,7 +158,6 @@ void execute_command(short command, RAM* ram, Register* registers) {
                                 get_register(instr_components.nibble_4, registers).word_32;
                 
                 if (instr_components.nibble_2 < 12) {
-                    printf("!(%d & %d) = %d", operand_1, operand_2, ~(operand_1 & operand_2));
                     result_reg.word_16 = ~(operand_1 & operand_2);
                 } else {
                     result_reg.word_32 = ~(operand_1 & operand_2);
@@ -190,9 +190,43 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0xC: // MOVUI
+                if (instr_components.nibble_2 < 12)
+                    immediate = get_register(instr_components.nibble_2, registers).word_16;
+                else
+                    immediate = get_register(instr_components.nibble_2, registers).word_32;
+
+                mask = 0xFFFF00FF;
+                immediate &= mask;
+                immediate |= instr_components.nibble_3 << 12;
+                immediate |= instr_components.nibble_4 << 8;
+
+                if (instr_components.nibble_2 < 12) {
+                    result_reg.word_16 = immediate;
+                } else {
+                    result_reg.word_32 = immediate;
+                }
+
+                update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0xD: // MOVLI
+                if (instr_components.nibble_2 < 12)
+                    immediate = get_register(instr_components.nibble_2, registers).word_16;
+                else
+                    immediate = get_register(instr_components.nibble_2, registers).word_32;
+
+                mask = 0xFFFFFF00;
+                immediate &= mask;
+                immediate |= instr_components.nibble_3 << 4;
+                immediate |= instr_components.nibble_4;
+
+                if (instr_components.nibble_2 < 12) {
+                    result_reg.word_16 = immediate;
+                } else {
+                    result_reg.word_32 = immediate;
+                }
+
+                update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             default:
