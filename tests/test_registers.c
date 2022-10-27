@@ -7,7 +7,7 @@
 Test the following situations:
   - All registers should be 0 at initialisation
 */
-void test_init() {
+void test_registers_init() {
     Register* registers = init_registers();
     for (int i = 0; i < 16; i++) {
         if (i < 12)
@@ -15,6 +15,8 @@ void test_init() {
         else
             assert(registers[i].word_32 == 0);
     }
+
+    free(registers);
 }
 
 
@@ -29,7 +31,7 @@ Test the following situations:
   - 16-bit registers should not behave when updated to a negative number outside the valid range
   - 32-bit registers should do all of the above
 */
-void test_update() {
+void test_registers_update() {
     Register* registers = init_registers();
 
     // Check constant 0 cannot be updated
@@ -97,6 +99,8 @@ void test_update() {
     new_val.word_32 = -40000000000; 
     update_register(14, new_val, registers);
     assert(get_register(14, registers).word_32 == 0xAFD07000);
+
+    free(registers);
 }
 
 
@@ -106,7 +110,7 @@ Test the following situations:
   - 16-bit registers shall return the set value
   - 32-bit registers shall return the set value
 */
-void test_get() {
+void test_registers_get() {
     Register* registers = init_registers();
     Register new_val;
 
@@ -123,13 +127,6 @@ void test_get() {
     new_val.word_32 = 80000; 
     update_register(14, new_val, registers);
     assert(get_register(14, registers).word_32 == 80000);
-}
 
-
-int main() {
-    test_init();
-    test_update();
-    test_get();
-    
-    return 0;
+    free(registers);
 }

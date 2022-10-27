@@ -112,3 +112,13 @@ short get_from_ram(RAM* ram, unsigned int key) {
     printf("Could not get key %u from RAM\n", key);
     exit(-3);
 }
+
+
+/*
+Resets static variable `ram_is_initialised` to 0 (aka. FALSE).
+
+WARNING: FOR TESTING PURPOSES ONLY!
+*/
+void reset_RAM() {
+    ram_is_initialised = FALSE;
+}
