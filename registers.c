@@ -76,7 +76,6 @@ void print_registers(Register* registers) {
 
     for (int i = 12; i < 16; i++) {
         printf("32-Bit Register %X: 0x%08X\n", i, registers[i].word_32);
-    }
-        
+    } 
 }
 
