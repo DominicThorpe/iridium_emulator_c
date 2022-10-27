@@ -148,28 +148,51 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
-            case 0x8:
+            case 0x8: // NAND
+                operand_1 = instr_components.nibble_3 < 12 ? 
+                                get_register(instr_components.nibble_3, registers).word_16 : 
+                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_2 = instr_components.nibble_4 < 12 ? 
+                                get_register(instr_components.nibble_4, registers).word_16 : 
+                                get_register(instr_components.nibble_4, registers).word_32;
+                
+                if (instr_components.nibble_2 < 12) {
+                    printf("!(%d & %d) = %d", operand_1, operand_2, ~(operand_1 & operand_2));
+                    result_reg.word_16 = ~(operand_1 & operand_2);
+                } else {
+                    result_reg.word_32 = ~(operand_1 & operand_2);
+                }
+
+                update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
-            case 0x9:
+            case 0x9: // OR
+                operand_1 = instr_components.nibble_3 < 12 ? 
+                                get_register(instr_components.nibble_3, registers).word_16 : 
+                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_2 = instr_components.nibble_4 < 12 ? 
+                                get_register(instr_components.nibble_4, registers).word_16 : 
+                                get_register(instr_components.nibble_4, registers).word_32;
+                
+                if (instr_components.nibble_2 < 12) {
+                    result_reg.word_16 = operand_1 | operand_2;
+                } else {
+                    result_reg.word_32 = operand_1 | operand_2;
+                }
+
+                update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
-            case 0xA:
+            case 0xA: // LOAD
                 break;
             
-            case 0xB:
+            case 0xB: // STORE
                 break;
             
-            case 0xC:
+            case 0xC: // MOVUI
                 break;
             
-            case 0xD:
-                break;
-            
-            case 0xE:
-                break;
-            
-            case 0xF:
+            case 0xD: // MOVLI
                 break;
             
             default:
