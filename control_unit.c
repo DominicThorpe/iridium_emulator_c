@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "ram.h"
 #include "registers.h"
+#include "ALU.h"
 
 #define GET_REG_VAL(index) index < 12 ? get_register(index, registers).word_16 : get_register(index, registers).word_32
 
@@ -34,19 +35,13 @@ void execute_command(short command, RAM* ram, Register* registers) {
     } else { // 4-bit opcode
         switch (instr_components.nibble_1) {
             case 0x0: // NOP
-                1 + 1;
+                1 + 1; // waste a clock cycle
                 break;
             
             case 0x1: // ADD
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
-                
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = operand_1 + operand_2;
-                else
-                    result_reg.word_32 = operand_1 + operand_2;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                addition(operand_1, operand_2, instr_components.nibble_2, registers);
                 break;
             
             case 0x2: // SUB
