@@ -3,6 +3,8 @@
 #include "ram.h"
 #include "registers.h"
 
+#define GET_REG_VAL(index) index < 12 ? get_register(index, registers).word_16 : get_register(index, registers).word_32
+
 
 /*
 Takes a 16-bit binary command and decomposes it into 4-bit sections. Extracts the opcode and operands
@@ -36,163 +38,117 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x1: // ADD
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 + operand_2;
-                } else {
+                else
                     result_reg.word_32 = operand_1 + operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x2: // SUB
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 - operand_2;
-                } else {
+                else
                     result_reg.word_32 = operand_1 - operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
 
             case 0x3: // ADDI
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 + instr_components.nibble_4;
-                } else {
+                else
                     result_reg.word_32 = operand_1 + instr_components.nibble_4;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x4: // SUBI
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 - instr_components.nibble_4;
-                } else {
+                else
                     result_reg.word_32 = operand_1 - instr_components.nibble_4;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x5: // SLL
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 << operand_2;
-                } else {
+                else
                     result_reg.word_32 = operand_1 << operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x6: // SRL
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
                 unsigned short unsigned_1 = operand_1;
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = unsigned_1 >> operand_2;
-                } else {
+                else
                     result_reg.word_32 = unsigned_1 >> operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x7: // SRA
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = (short)operand_1 >> (short)operand_2;
-                } else {
+                else
                     result_reg.word_32 = operand_1 >> operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x8: // NAND
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = ~(operand_1 & operand_2);
-                } else {
+                else
                     result_reg.word_32 = ~(operand_1 & operand_2);
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0x9: // OR
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = operand_1 | operand_2;
-                } else {
+                else
                     result_reg.word_32 = operand_1 | operand_2;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0xA: // LOAD
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 upper_addr = get_register(11, registers).word_16;
 
-                printf("getting from %d\n", upper_addr | (operand_1 + operand_2));
                 immediate = get_from_ram(ram, upper_addr | (operand_1 + operand_2));
                 if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = immediate;
@@ -203,12 +159,8 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0xB: // STORE
-                operand_1 = instr_components.nibble_3 < 12 ? 
-                                get_register(instr_components.nibble_3, registers).word_16 : 
-                                get_register(instr_components.nibble_3, registers).word_32;
-                operand_2 = instr_components.nibble_4 < 12 ? 
-                                get_register(instr_components.nibble_4, registers).word_16 : 
-                                get_register(instr_components.nibble_4, registers).word_32;
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 upper_addr = get_register(11, registers).word_16 << 16;
 
                 if (instr_components.nibble_2 < 12)
@@ -216,47 +168,38 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 else
                     immediate = get_register(instr_components.nibble_2, registers).word_32 & 0x0000FFFF;
                 
-                printf("storing to %d\n", upper_addr | (operand_1 + operand_2));
                 add_to_ram(ram, upper_addr | (operand_1 + operand_2), immediate);
 
                 break;
             
             case 0xC: // MOVUI
-                if (instr_components.nibble_2 < 12)
-                    immediate = get_register(instr_components.nibble_2, registers).word_16;
-                else
-                    immediate = get_register(instr_components.nibble_2, registers).word_32;
+                immediate = GET_REG_VAL(instr_components.nibble_2);
 
                 mask = 0xFFFF00FF;
                 immediate &= mask;
                 immediate |= instr_components.nibble_3 << 12;
                 immediate |= instr_components.nibble_4 << 8;
 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = immediate;
-                } else {
+                else
                     result_reg.word_32 = immediate;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0xD: // MOVLI
-                if (instr_components.nibble_2 < 12)
-                    immediate = get_register(instr_components.nibble_2, registers).word_16;
-                else
-                    immediate = get_register(instr_components.nibble_2, registers).word_32;
+                immediate = GET_REG_VAL(instr_components.nibble_2);
 
                 mask = 0xFFFFFF00;
                 immediate &= mask;
                 immediate |= instr_components.nibble_3 << 4;
                 immediate |= instr_components.nibble_4;
 
-                if (instr_components.nibble_2 < 12) {
+                if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = immediate;
-                } else {
+                else
                     result_reg.word_32 = immediate;
-                }
 
                 update_register(instr_components.nibble_2, result_reg, registers);
                 break;
