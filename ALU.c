@@ -20,11 +20,12 @@ void set_flags(short val, int set_carry, short arg_a, short arg_b) {
 
     if (val == 0)
         alu_flags.zero = 1;
-    else if (val < 0) {
+    else if (val < 0)
         alu_flags.negative = 1;
-
-        // if the sign of the result does not match the sign of the operands, and the operands have the same
-        // sign, then there has been an overflow
+    
+    // If the sign of the result does not match the sign of the operands, and the operands have the same
+    // sign, then there has been an overflow
+    if (set_carry == TRUE) {
         if (arg_a > 0 && arg_b > 0 && ((unsigned short)(arg_a + arg_b)) < 0)
             alu_flags.carry = 1;
         else if (arg_a < 0 && arg_b < 0 && ((unsigned short)(arg_a + arg_b)) > 0)
@@ -46,4 +47,15 @@ void addition(short operand_a, short operand_b, unsigned int output_reg, Registe
 
     set_flags(operand_a + operand_b, TRUE, operand_a, operand_b);
     update_register(output_reg, result_reg, registers);
+}
+
+
+/*
+Performs subtraction by taking the compliment of operand B and adding one, thereby getting the
+2s-compliment of operand B, which is -B, and addingit to A, because A +- B = A - B.
+*/
+void subtraction(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    printf("%d - %d\n", operand_a, operand_b);
+    operand_b = (~operand_b) + 1;
+    addition(operand_a, operand_b, output_reg, registers);
 }

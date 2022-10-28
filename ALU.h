@@ -10,3 +10,4 @@ struct {
 
 void set_flags(short val, int set_carry, short arg_a, short arg_b);
 void addition(short operand_a, short operand_b, unsigned int output_reg, Register* registers);
+void subtraction(short operand_a, short operand_b, unsigned int output_reg, Register* registers);

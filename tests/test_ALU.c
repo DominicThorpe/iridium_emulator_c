@@ -57,6 +57,56 @@ void test_add() {
 }
 
 
+/*
+Test that the ALU can do the following:
+  - will not change the $zero register
+  - will subtract 16-bit registers properly
+  - will properly subtract a 16-bit from a 32-bit register
+  - sets the flags correctly
+*/
+void test_subtraction() {
+    Register* registers = init_registers();
+    Register new_reg;
+
+    // Check will not change the $zero register
+    addition(8, 5, 0, registers);
+    assert(get_register(0, registers).word_16 == 0);
+
+    // Check will subtract 16-bit registers properly
+    subtraction(10, 5, 1, registers);
+    assert(get_register(1, registers).word_16 == 5);
+
+    // Check will subtract 32-bit registers (will only add the 1st 16 bits and AND them 
+    // into the 1st 16-bits of the 32 bit-reg)    
+    new_reg.word_32 = 0x55555555;
+    update_register(13, new_reg, registers);
+    subtraction(0x5555, 0x3333, 13, registers);
+    assert(get_register(13, registers).word_32 == 0x55552222);
+
+    new_reg.word_32 = 0x55555555;
+    update_register(13, new_reg, registers);
+    subtraction(0x5555, 0x7777, 13, registers);
+    assert(get_register(13, registers).word_32 == 0x5555DDDE);
+
+    // Check sets the flags correctly
+    subtraction(5, 5, 1, registers);
+    assert(alu_flags.zero == 1);
+    assert(alu_flags.negative == 0);
+    assert(alu_flags.carry == 0);   
+
+    subtraction(5, 10, 1, registers);
+    assert(alu_flags.zero == 0);
+    assert(alu_flags.negative == 1);
+    assert(alu_flags.carry == 0);
+
+    subtraction(0x8000, 1, 1, registers);
+    assert(alu_flags.zero == 0);
+    assert(alu_flags.negative == 0);
+    assert(alu_flags.carry == 1);
+}
+
+
 void test_ALU() {
     test_add();
+    test_subtraction();
 }
