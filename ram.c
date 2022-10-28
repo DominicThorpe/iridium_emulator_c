@@ -95,12 +95,12 @@ the correct key.
 */
 short get_from_ram(RAM* ram, unsigned int key) {
     long hash = hash_function(key);
-    if (ram->buckets[hash] != NULL && ram->buckets[hash]->key == key)
-        return ram->buckets[hash]->value;
-    else {
+    if (ram->buckets[hash] != NULL && ram->buckets[hash]->key == key) {
+        return ram->buckets[hash]->value;    
+    } else if (ram->buckets[hash] != NULL) {
         RAMKeyValuePair* current_kvp = ram->buckets[hash];
-        if (current_kvp->key == key)
-            return current_kvp->value;
+        if (current_kvp->key == key) // problem here or here
+            return current_kvp->value; // problem here or here
 
         while (current_kvp->next != NULL) {
             current_kvp = current_kvp->next;

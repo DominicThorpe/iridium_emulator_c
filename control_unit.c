@@ -24,7 +24,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
     instr_components.nibble_4 = command & 0x000F;
 
     int operand_1, operand_2, operand_3;
-    int immediate, mask;
+    int immediate, mask, upper_addr;
     Register result_reg;
 
     if (instr_components.nibble_1 == 0xF) { // 8-bit opcode
@@ -184,9 +184,41 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0xA: // LOAD
+                operand_1 = instr_components.nibble_3 < 12 ? 
+                                get_register(instr_components.nibble_3, registers).word_16 : 
+                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_2 = instr_components.nibble_4 < 12 ? 
+                                get_register(instr_components.nibble_4, registers).word_16 : 
+                                get_register(instr_components.nibble_4, registers).word_32;
+                upper_addr = get_register(11, registers).word_16;
+
+                printf("getting from %d\n", upper_addr | (operand_1 + operand_2));
+                immediate = get_from_ram(ram, upper_addr | (operand_1 + operand_2));
+                if (instr_components.nibble_2 < 12)
+                    result_reg.word_16 = immediate;
+                else
+                    result_reg.word_32 = immediate;
+
+                update_register(instr_components.nibble_2, result_reg, registers);
                 break;
             
             case 0xB: // STORE
+                operand_1 = instr_components.nibble_3 < 12 ? 
+                                get_register(instr_components.nibble_3, registers).word_16 : 
+                                get_register(instr_components.nibble_3, registers).word_32;
+                operand_2 = instr_components.nibble_4 < 12 ? 
+                                get_register(instr_components.nibble_4, registers).word_16 : 
+                                get_register(instr_components.nibble_4, registers).word_32;
+                upper_addr = get_register(11, registers).word_16 << 16;
+
+                if (instr_components.nibble_2 < 12)
+                    immediate = get_register(instr_components.nibble_2, registers).word_16;
+                else
+                    immediate = get_register(instr_components.nibble_2, registers).word_32 & 0x0000FFFF;
+                
+                printf("storing to %d\n", upper_addr | (operand_1 + operand_2));
+                add_to_ram(ram, upper_addr | (operand_1 + operand_2), immediate);
+
                 break;
             
             case 0xC: // MOVUI
