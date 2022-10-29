@@ -52,61 +52,30 @@ void execute_command(short command, RAM* ram, Register* registers) {
 
             case 0x3: // ADDI
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
-
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = operand_1 + instr_components.nibble_4;
-                else
-                    result_reg.word_32 = operand_1 + instr_components.nibble_4;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                addition(operand_1, instr_components.nibble_4, instr_components.nibble_2, registers);
                 break;
             
             case 0x4: // SUBI
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
-
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = operand_1 - instr_components.nibble_4;
-                else
-                    result_reg.word_32 = operand_1 - instr_components.nibble_4;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                subtraction(operand_1, instr_components.nibble_4, instr_components.nibble_2, registers);
                 break;
             
             case 0x5: // SLL
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
-                
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = operand_1 << operand_2;
-                else
-                    result_reg.word_32 = operand_1 << operand_2;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                left_shift(operand_1, operand_2, instr_components.nibble_2, registers);
                 break;
             
             case 0x6: // SRL
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
-                
-                unsigned short unsigned_1 = operand_1;
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = unsigned_1 >> operand_2;
-                else
-                    result_reg.word_32 = unsigned_1 >> operand_2;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                logical_right_shift(operand_1, operand_2, instr_components.nibble_2, registers);
                 break;
             
             case 0x7: // SRA
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
-                
-                if (instr_components.nibble_2 < 12)
-                    result_reg.word_16 = (short)operand_1 >> (short)operand_2;
-                else
-                    result_reg.word_32 = operand_1 >> operand_2;
-
-                update_register(instr_components.nibble_2, result_reg, registers);
+                arithmetic_right_shift(operand_1, operand_2, instr_components.nibble_2, registers);
                 break;
             
             case 0x8: // NAND

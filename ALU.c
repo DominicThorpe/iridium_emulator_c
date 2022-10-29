@@ -52,10 +52,60 @@ void addition(short operand_a, short operand_b, unsigned int output_reg, Registe
 
 /*
 Performs subtraction by taking the compliment of operand B and adding one, thereby getting the
-2s-compliment of operand B, which is -B, and addingit to A, because A +- B = A - B.
+2s-compliment of operand B, which is -B, and adding it to A, because A +- B = A - B.
 */
 void subtraction(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
-    printf("%d - %d\n", operand_a, operand_b);
     operand_b = (~operand_b) + 1;
     addition(operand_a, operand_b, output_reg, registers);
+}
+
+
+/*
+Performs a left shift on operand A by the number of bits specified by operand B and stores the 
+result in the output register. 
+
+Does not set ALU flags.
+*/
+void left_shift(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    Register result_reg;
+    if (output_reg < 12)
+        result_reg.word_16 = operand_a << operand_b;
+    else
+        result_reg.word_32 = operand_a << operand_b;
+
+    update_register(output_reg, result_reg, registers);
+}
+
+
+/*
+Performs a *logical* right shift on operand A by the number of bits specified by operand B and stores the 
+result in the output register. 
+
+Does not set ALU flags.
+*/
+void arithmetic_right_shift(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    Register result_reg;
+    if (output_reg < 12)
+        result_reg.word_16 = operand_a >> operand_b;
+    else
+        result_reg.word_32 = operand_a >> operand_b;
+
+    update_register(output_reg, result_reg, registers);
+}
+
+
+/*
+Performs an *arithmetic* right shift on operand A by the number of bits specified by operand B and stores the 
+result in the output register. 
+
+Does not set ALU flags.
+*/
+void logical_right_shift(unsigned short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    Register result_reg;
+    if (output_reg < 12)
+        result_reg.word_16 = operand_a >> operand_b;
+    else
+        result_reg.word_32 = operand_a >> operand_b;
+
+    update_register(output_reg, result_reg, registers);
 }

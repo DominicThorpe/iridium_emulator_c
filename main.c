@@ -37,9 +37,6 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     char* commands = read_commands(argv[1]);
-    execute_command(0xD110, ram, register_file);
-    execute_command(0xD230, ram, register_file);
-    execute_command(0x1312, ram, register_file);
     print_registers(register_file);
     
     free(register_file);
