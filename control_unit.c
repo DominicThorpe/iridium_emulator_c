@@ -31,7 +31,57 @@ void execute_command(short command, RAM* ram, Register* registers) {
     Register result_reg;
 
     if (instr_components.nibble_1 == 0xF) { // 8-bit opcode
-        
+        switch (instr_components.nibble_2) {
+            case 0x0: // ADDC
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                printf("%d + %d = %d, into %d\n", operand_1, alu_flags.carry, operand_1 + alu_flags.carry, instr_components.nibble_4);
+                addition(operand_1, alu_flags.carry, instr_components.nibble_4, registers);
+                
+                break;
+            
+            case 0x1: // SUBC
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                if (alu_flags.carry == 1)
+                    subtraction(operand_1, 1, instr_components.nibble_4, registers);
+
+                break;
+            
+            case 0x2: // JUMP
+                break;
+            
+            case 0x3: // JAL
+                break;
+            
+            case 0x4: // CMP
+                break;
+            
+            case 0x5: // BEQ
+                break;
+            
+            case 0x6: // BNE
+                break;
+            
+            case 0x7: // BLT
+                break;
+            
+            case 0x8: // BGT
+                break;
+            
+            case 0x9: // IN
+                break;
+            
+            case 0xA: // OUT
+                break;
+            
+            case 0xC: // syscall
+                break;
+            
+            case 0xF: // HALT
+                break;
+            
+            default: 
+                break;
+        }
     } else { // 4-bit opcode
         switch (instr_components.nibble_1) {
             case 0x0: // NOP
