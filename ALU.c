@@ -109,3 +109,35 @@ void logical_right_shift(unsigned short operand_a, short operand_b, unsigned int
 
     update_register(output_reg, result_reg, registers);
 }
+
+
+/* 
+Performs the logical NAND operation on the 2 inputs and places the result in the output register.
+
+Does not set ALU flags
+*/
+void logical_nand(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    Register result_reg;
+    if (output_reg < 12)
+        result_reg.word_16 = ~(operand_a & operand_b);
+    else
+        result_reg.word_32 = ~(operand_a & operand_b);
+
+    update_register(output_reg, result_reg, registers);
+}
+
+
+/* 
+Performs the logical OR operation on the 2 inputs and places the result in the output register.
+
+Does not set ALU flags
+*/
+void logical_or(short operand_a, short operand_b, unsigned int output_reg, Register* registers) {
+    Register result_reg;
+    if (output_reg < 12)
+        result_reg.word_16 = operand_a | operand_b;
+    else
+        result_reg.word_32 = operand_a | operand_b;
+
+    update_register(output_reg, result_reg, registers);
+}

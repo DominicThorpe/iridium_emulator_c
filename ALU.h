@@ -14,3 +14,5 @@ void subtraction(short operand_a, short operand_b, unsigned int output_reg, Regi
 void left_shift(short operand_a, short operand_b, unsigned int output_reg, Register* registers);
 void arithmetic_right_shift(short operand_a, short operand_b, unsigned int output_reg, Register* registers);
 void logical_right_shift(unsigned short operand_a, short operand_b, unsigned int output_reg, Register* registers);
+void logical_nand(short operand_a, short operand_b, unsigned int output_reg, Register* registers);
+void logical_or(short operand_a, short operand_b, unsigned int output_reg, Register* registers);
