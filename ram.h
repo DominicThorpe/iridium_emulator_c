@@ -27,5 +27,6 @@ RAM* init_RAM(long hash_capacity);
 void add_to_ram(RAM* ram, unsigned int key, short value);
 short get_from_ram(RAM* ram, unsigned int key);
 void reset_RAM();
+void print_RAM(RAM* ram);
 
 #endif

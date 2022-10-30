@@ -29,16 +29,17 @@ field appropriate to that register, which is `short` if index < 12, and `int` ot
 The register with index 0 will always be 0 and cannot be changed.
 */
 void update_register(unsigned int index, Register new_value, Register* registers) {
+    if (index == 4)
+        printf("Setting $g%d to 0x%hX\n", index-1, new_value.word_16);
     if (index == 0)
         return;
 
-    if (index < 12) {
+    if (index < 12)
         registers[index].word_16 = new_value.word_16;
-    } else if (index < 16) {
+    else if (index < 16)
         registers[index].word_32 = new_value.word_32;
-    } else {
+    else
         exit(-4);
-    }
 }
 
 

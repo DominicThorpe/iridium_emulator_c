@@ -116,6 +116,31 @@ short get_from_ram(RAM* ram, unsigned int key) {
 
 
 /*
+Iterates through each bucket in RAM and prints the top item, then goes deeper and deeper into every
+bucket until each element has been printed.
+
+TODO: CURRENTLY ONLY PRINTS THE TOP ROW!
+*/
+void print_RAM(RAM* ram) {
+    int level_to_check = 0;
+    int current_level;
+    unsigned int found_non_empty_bucket = FALSE;
+    RAMKeyValuePair* current_bucket;
+    
+    do {
+        for (long i = 0; i < ram_hash_capacity; i++) {
+            found_non_empty_bucket = FALSE;
+            if (ram->buckets[i] != NULL)
+                found_non_empty_bucket = TRUE;
+            
+            if (ram->buckets[i] != NULL) 
+                printf("0x%08X:\t0x%04hX\n", ram->buckets[i]->key, ram->buckets[i]->value);
+        }
+    } while (found_non_empty_bucket == TRUE);
+}
+
+
+/*
 Resets static variable `ram_is_initialised` to 0 (aka. FALSE).
 
 WARNING: FOR TESTING PURPOSES ONLY!

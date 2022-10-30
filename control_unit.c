@@ -97,6 +97,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
 
             case 0x3: // ADDI
+                printf("ADDI: %d, %d into %d\n", operand_1, instr_components.nibble_4, instr_components.nibble_2);
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 addition(operand_1, instr_components.nibble_4, instr_components.nibble_2, registers);
                 break;
