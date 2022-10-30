@@ -77,10 +77,11 @@ void add_to_ram(RAM* ram, unsigned int key, short value) {
             }
 
             current_kvp = current_kvp->next;
-            if (current_kvp->key == key) {
-                current_kvp->value = value;
-                return;
-            }
+        }
+
+        if (current_kvp->key == key) {
+            current_kvp->value = value;
+            return;
         }
 
         current_kvp->next = pair;
@@ -116,27 +117,24 @@ short get_from_ram(RAM* ram, unsigned int key) {
 
 
 /*
-Iterates through each bucket in RAM and prints the top item, then goes deeper and deeper into every
-bucket until each element has been printed.
-
-TODO: CURRENTLY ONLY PRINTS THE TOP ROW!
+Iterates through each bucket in RAM and prints the contents from top to bottom.
 */
 void print_RAM(RAM* ram) {
-    int level_to_check = 0;
-    int current_level;
-    unsigned int found_non_empty_bucket = FALSE;
     RAMKeyValuePair* current_bucket;
-    
-    do {
-        for (long i = 0; i < ram_hash_capacity; i++) {
-            found_non_empty_bucket = FALSE;
-            if (ram->buckets[i] != NULL)
-                found_non_empty_bucket = TRUE;
-            
-            if (ram->buckets[i] != NULL) 
-                printf("0x%08X:\t0x%04hX\n", ram->buckets[i]->key, ram->buckets[i]->value);
-        }
-    } while (found_non_empty_bucket == TRUE);
+    for (long i = 0; i < ram_hash_capacity; i++) {
+        if (ram->buckets[i] == NULL)
+            continue;
+        
+        current_bucket = ram->buckets[i];
+        
+        printf("Bucket %03X:\n", i);
+        do {
+            printf("    0x%08X:\t0x%04hX\n", current_bucket->key, current_bucket->value);
+            current_bucket = current_bucket->next;
+        } while (current_bucket != NULL);
+
+        printf("\n");
+    }
 }
 
 
