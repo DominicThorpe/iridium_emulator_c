@@ -34,16 +34,12 @@ void execute_command(short command, RAM* ram, Register* registers) {
         switch (instr_components.nibble_2) {
             case 0x0: // ADDC
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
-                printf("%d + %d = %d, into %d\n", operand_1, alu_flags.carry, operand_1 + alu_flags.carry, instr_components.nibble_4);
                 addition(operand_1, alu_flags.carry, instr_components.nibble_4, registers);
-                
                 break;
             
             case 0x1: // SUBC
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
-                if (alu_flags.carry == 1)
-                    subtraction(operand_1, 1, instr_components.nibble_4, registers);
-
+                subtraction(operand_1, alu_flags.carry, instr_components.nibble_4, registers);
                 break;
             
             case 0x2: // JUMP

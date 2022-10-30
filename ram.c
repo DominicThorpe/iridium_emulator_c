@@ -95,9 +95,10 @@ the correct key.
 */
 short get_from_ram(RAM* ram, unsigned int key) {
     long hash = hash_function(key);
-    if (ram->buckets[hash] != NULL && ram->buckets[hash]->key == key) {
-        return ram->buckets[hash]->value;    
-    } else if (ram->buckets[hash] != NULL) {
+    if (ram->buckets[hash] != NULL && ram->buckets[hash]->key == key)
+        return ram->buckets[hash]->value; 
+
+    else if (ram->buckets[hash] != NULL) {
         RAMKeyValuePair* current_kvp = ram->buckets[hash];
         if (current_kvp->key == key) // problem here or here
             return current_kvp->value; // problem here or here
@@ -110,7 +111,7 @@ short get_from_ram(RAM* ram, unsigned int key) {
     }
     
     printf("Could not get key %u from RAM\n", key);
-    exit(-3);
+    return 0;
 }
 
 

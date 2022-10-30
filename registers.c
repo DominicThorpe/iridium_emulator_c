@@ -28,11 +28,11 @@ field appropriate to that register, which is `short` if index < 12, and `int` ot
 
 The register with index 0 will always be 0 and cannot be changed.
 */
-void update_register(int index, Register new_value, Register* registers) {
+void update_register(unsigned int index, Register new_value, Register* registers) {
     if (index == 0)
         return;
 
-    if (index < 11) {
+    if (index < 12) {
         registers[index].word_16 = new_value.word_16;
     } else if (index < 16) {
         registers[index].word_32 = new_value.word_32;
@@ -49,20 +49,17 @@ otherwise.
 
 The register at index 0 will always return 0.
 */
-Register get_register(int index, Register* registers) {
+Register get_register(unsigned int index, Register* registers) {
     if (index == 0) {
         Register zero;
         zero.word_32 = 0;
         return zero;
-    }
-
-    if (index < 11) {
-        return registers[index];
-    } else if (index < 16) {
-        return registers[index];
-    } else {
+    } else if (index > 15) {
+        printf("Invalid register index %d\n", index);
         exit(-4);
     }
+
+    return registers[index];
 }
 
 
