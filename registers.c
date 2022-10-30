@@ -29,8 +29,6 @@ field appropriate to that register, which is `short` if index < 12, and `int` ot
 The register with index 0 will always be 0 and cannot be changed.
 */
 void update_register(unsigned int index, Register new_value, Register* registers) {
-    if (index == 4)
-        printf("Setting $g%d to 0x%hX\n", index-1, new_value.word_16);
     if (index == 0)
         return;
 
@@ -68,12 +66,16 @@ Register get_register(unsigned int index, Register* registers) {
 Takes the array of registers (which should have length 16), and prints their values.
 */
 void print_registers(Register* registers) {
-    for (int i = 0; i < 12; i++) {
-        printf("16-Bit Register %X: 0x%04X\n", i, registers[i].word_16);
+    printf("$zero: 0x0000\n");
+
+    for (int i = 1; i < 11; i++) {
+        printf("$g%d: 0x%04hX\n", i-1, registers[i].word_16);
     }
 
-    for (int i = 12; i < 16; i++) {
-        printf("32-Bit Register %X: 0x%08X\n", i, registers[i].word_32);
-    } 
+    printf("$ua: 0x%04hX\n", registers[11].word_16);
+    printf("$sp: 0x%08hX\n", registers[12].word_32);
+    printf("$fp: 0x%08hX\n", registers[13].word_32);
+    printf("$ra: 0x%08hX\n", registers[14].word_32);
+    printf("$pc: 0x%08hX\n", registers[15].word_32);
 }
 

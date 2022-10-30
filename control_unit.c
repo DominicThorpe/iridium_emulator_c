@@ -97,7 +97,6 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
 
             case 0x3: // ADDI
-                printf("ADDI: %d, %d into %d\n", operand_1, instr_components.nibble_4, instr_components.nibble_2);
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 addition(operand_1, instr_components.nibble_4, instr_components.nibble_2, registers);
                 break;
@@ -142,7 +141,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 upper_addr = get_register(11, registers).word_16;
 
-                immediate = get_from_ram(ram, upper_addr | (operand_1 + operand_2));
+                immediate = get_from_ram(ram, (upper_addr << 16) + (operand_1 + operand_2));
                 if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = immediate;
                 else
@@ -154,12 +153,12 @@ void execute_command(short command, RAM* ram, Register* registers) {
             case 0xB: // STORE
                 operand_1 = GET_REG_VAL(instr_components.nibble_3);
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
-                upper_addr = get_register(11, registers).word_16 << 16;
+                upper_addr = get_register(11, registers).word_16;
                 immediate = instr_components.nibble_2 < 12 ?
                             get_register(instr_components.nibble_2, registers).word_16 : 
                             get_register(instr_components.nibble_2, registers).word_32 & 0x0000FFFF;
                 
-                add_to_ram(ram, upper_addr | (operand_1 + operand_2), immediate);
+                add_to_ram(ram, (upper_addr << 16) + (operand_1 + operand_2), immediate);
 
                 break;
             

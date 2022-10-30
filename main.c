@@ -4,6 +4,10 @@
 #include "ram.h"
 #include "control_unit.h"
 
+#define DATA_SECTION_OFFSET 0x00100000
+#define TRUE 1
+#define FALSE 0
+
 
 // Reads bytes from the specified file and outputs those bytes as a pointer to an array
 char* read_commands(char* filename, long* prog_len) {
@@ -37,30 +41,43 @@ int main(int argc, char *argv[]) {
     Register* register_file = init_registers();
     RAM* ram = init_RAM(1024);
 
-    // read program instr data into RAM
+    // read program data into RAM
     long prog_len;
     char* commands = read_commands(argv[1], &prog_len);
+    int data_section = FALSE;
+    int index = 0;
     for (long i = 0; i < prog_len; i += 2) {
-        short command = (commands[i] << 8) | commands[i+1];
+        short command = ((short)(commands[i] & 0x00FF) << 8) | (short)(commands[i+1] & 0x00FF);
 
         // found the start of the data section
-        if (commands[i] == 'd' && commands[i+1] == 'a' && commands[i+2] == 't' && commands[i+3] == 'a')
-            break;
+        if (commands[i] == 'd' && commands[i+1] == 'a' && commands[i+2] == 't' && commands[i+3] == 'a') {
+            data_section = TRUE;
+            index = 0;
+
+            // skip the "data:" label
+            i += 3;
+            continue;
+        }
         
-        add_to_ram(ram, i / 2, command);
+        if (data_section == FALSE)
+            add_to_ram(ram, index, command);
+        else
+            add_to_ram(ram, index + DATA_SECTION_OFFSET, command);
+        
+        index++;
     }
 
+    // execute the program
     int pc_count;
     Register new_count;
     short command;
-    while (1) {
+    while (TRUE) {
         pc_count = get_register(15, register_file).word_32;
         command = get_from_ram(ram, pc_count);
         
         if (command == 0x0000 || command == 0xFFFF)
             break;
         
-        printf("Command: %04hX\n", command);
         execute_command(command, ram, register_file);
         new_count.word_32 = get_register(15, register_file).word_32 + 1;
         update_register(15, new_count, register_file);
@@ -70,8 +87,6 @@ int main(int argc, char *argv[]) {
     
     free(register_file);
     free(commands);
-
-    printf("Done\n");
     
     return 0;
 }

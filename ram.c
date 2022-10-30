@@ -79,6 +79,7 @@ void add_to_ram(RAM* ram, unsigned int key, short value) {
             current_kvp = current_kvp->next;
         }
 
+        // for if the end of the linked list has the same key as the new data
         if (current_kvp->key == key) {
             current_kvp->value = value;
             return;
