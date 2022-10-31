@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
             data_section = TRUE;
             index = 0;
 
-            // skip the "data:" label
+            // skip the "data:" label bytes 
             i += 3;
             continue;
         }
@@ -84,6 +84,7 @@ int main(int argc, char *argv[]) {
     }
 
     print_registers(register_file);
+    print_RAM(ram);
     
     free(register_file);
     free(commands);

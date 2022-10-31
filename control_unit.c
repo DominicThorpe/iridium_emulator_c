@@ -43,12 +43,17 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x2: // JUMP
+                result_reg.word_32 = ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1;
+                update_register(15, result_reg, registers);
                 break;
             
             case 0x3: // JAL
                 break;
             
             case 0x4: // CMP
+                operand_1 = GET_REG_VAL(instr_components.nibble_3);
+                operand_2 = GET_REG_VAL(instr_components.nibble_4);
+                subtraction(operand_2, operand_1, 0, registers); // output to $zero
                 break;
             
             case 0x5: // BEQ
@@ -61,6 +66,10 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x8: // BGT
+                result_reg.word_32 = ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1;
+                if (alu_flags.negative == 1)
+                    update_register(15, result_reg, registers);
+
                 break;
             
             case 0x9: // IN
