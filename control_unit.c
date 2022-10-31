@@ -43,11 +43,22 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x2: // JUMP
-                result_reg.word_32 = ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1;
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+                if (instr_components.nibble_4 >= 12)
+                    printf("Good");
+                
                 update_register(15, result_reg, registers);
                 break;
             
             case 0x3: // JAL
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+
+                update_register(14, get_register(15, registers), registers);
+                update_register(15, result_reg, registers);
                 break;
             
             case 0x4: // CMP
@@ -57,16 +68,40 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x5: // BEQ
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+
+                if (alu_flags.zero == 1)
+                    update_register(15, result_reg, registers);
+
                 break;
             
             case 0x6: // BNE
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+
+                if (alu_flags.zero == 0)
+                    update_register(15, result_reg, registers);
+
                 break;
             
             case 0x7: // BLT
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+
+                if (alu_flags.negative == 0)
+                    update_register(15, result_reg, registers);
+
                 break;
             
             case 0x8: // BGT
-                result_reg.word_32 = ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1;
+                result_reg.word_32 = instr_components.nibble_4 < 12 ? 
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
+                        GET_REG_VAL(instr_components.nibble_4);
+
                 if (alu_flags.negative == 1)
                     update_register(15, result_reg, registers);
 
