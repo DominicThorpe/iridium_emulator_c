@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "test_registers.h"
-#include "test_RAM.h"
+#include "test_internal_memory.h"
 #include "test_ALU.h"
 
 
@@ -15,7 +15,7 @@ int main() {
     test_ram_init();
     test_ram_insert();
     test_ram_update();
-    printf("RAM OK!\n");
+    printf("INTERNAL MEMORY OK!\n");
 
     test_ALU();
     printf("ALU OK!\n");

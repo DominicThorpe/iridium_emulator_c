@@ -33,11 +33,13 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
     - [ ] Program halting (must wait for OS)
 
   - Flow-Control
-    - [ ] Unconditional branching (JUMP, JAL)
-    - [ ] Comparing values of 2 registers (CMP)
-    - [ ] Conditional branching (BEQ, BNE, BLT, BGT)
+    - [x] Unconditional branching (JUMP, JAL)
+    - [x] Comparing values of 2 registers (CMP)
+    - [x] Conditional branching (BEQ, BNE, BLT, BGT)
 
   - Program Loading
-    - [ ] Can load instructions from a specified file
+    - Can load instructions from a specified file
+      - [x] Into RAM
+      - [ ] Into hard drive
     - [ ] Can load instructions from ROM
     - [ ] Can load files from hard-drive

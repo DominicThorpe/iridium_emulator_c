@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "ram.h"
+#include "internal_memory.h"
 #include "registers.h"
 #include "ALU.h"
 

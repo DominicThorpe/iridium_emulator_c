@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
-#include "../ram.h"
+#include "../internal_memory.h"
 
 
 /*

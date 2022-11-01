@@ -15,7 +15,7 @@ corresponding linked list. If the address is not in the hashmap, it will return 
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "ram.h"
+#include "internal_memory.h"
 
 #define FALSE 0
 #define TRUE  1
