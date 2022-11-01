@@ -14,6 +14,15 @@ The hardware architectire is 16-bits, but has a 32-bit wide address bus, so can 
 There is also support for a number of I/O devices. We plan to support an SD Card for the hard drive, video and sound output, and a keyboard. There may also be mouse support, but this is not yet decided.
 
 
+### Memory Map
+
+The diagram below shows how memory is laid out in the system. Because we have an address space of 4GB, we know we can have *up to* 4GB of RAM/ROM, but we don't know how much we will actually have. When we implement a microprocessor version of this system, this amount will be much less than 1GB.
+
+![Diagram of memory](assets/memory_map.png)
+
+The program counter will always start at 0x0000 0000, and that is where the 1st instruction of the bootloader will be located. The bootloader will first go into the harddrive and locate a file called *"iridium_OS.ird"*, and load the entirety of the contents into RAM, starting at 0x0000 2000, then it will move the program counter to there and start executing the operating system.
+
+
 ## Current Progress
 
 This project is still a WIP with a lot left to go. The roadmap is as follows, and always check the blog to see current progress:
@@ -40,6 +49,7 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
   - Program Loading
     - Can load instructions from a specified file
       - [x] Into RAM
+      - [ ] Bootloader
       - [ ] Into hard drive
     - [ ] Can load instructions from ROM
     - [ ] Can load files from hard-drive

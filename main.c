@@ -32,6 +32,24 @@ char* read_commands(char* filename, long* prog_len) {
 }
 
 
+void execute_program(RAM* ram, Register* register_file) {
+    int pc_count;
+    Register new_count;
+    short command;
+    while (TRUE) {
+        pc_count = get_register(15, register_file).word_32;
+        command = get_from_ram(ram, pc_count);
+        
+        if (command == 0x0000 || command == 0xFFFF)
+            break;
+        
+        execute_command(command, ram, register_file);
+        new_count.word_32 = get_register(15, register_file).word_32 + 1;
+        update_register(15, new_count, register_file);
+    }
+}
+
+
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         printf("Incorrect number of arguments!\nUSAGE: emulator <filename>\n");
@@ -67,22 +85,7 @@ int main(int argc, char *argv[]) {
         index++;
     }
 
-    // execute the program
-    int pc_count;
-    Register new_count;
-    short command;
-    while (TRUE) {
-        pc_count = get_register(15, register_file).word_32;
-        command = get_from_ram(ram, pc_count);
-        
-        if (command == 0x0000 || command == 0xFFFF)
-            break;
-        
-        execute_command(command, ram, register_file);
-        new_count.word_32 = get_register(15, register_file).word_32 + 1;
-        update_register(15, new_count, register_file);
-    }
-
+    execute_program(ram, register_file);
     print_registers(register_file);
     print_RAM(ram);
     
