@@ -4,7 +4,7 @@
 #include "internal_memory.h"
 #include "control_unit.h"
 
-#define DATA_SECTION_OFFSET 0x00100000
+#define DATA_SECTION_OFFSET 0x00C00000
 #define TRUE 1
 #define FALSE 0
 
