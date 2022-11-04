@@ -3,6 +3,7 @@
 #include "internal_memory.h"
 #include "registers.h"
 #include "ALU.h"
+#include "os/interrupt_handler.h"
 
 #define GET_REG_VAL(index) index < 12 ? get_register(index, registers).word_16 : get_register(index, registers).word_32
 
@@ -28,6 +29,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
 
     int operand_1, operand_2, operand_3;
     int immediate, mask, upper_addr;
+    short code;
     Register result_reg;
 
     if (instr_components.nibble_1 == 0xF) { // 8-bit opcode
@@ -114,6 +116,8 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0xC: // syscall
+                code = (instr_components.nibble_3 << 4) | instr_components.nibble_4;
+                handle_interrupt_code(code, registers, ram);
                 break;
             
             case 0xF: // HALT

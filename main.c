@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
 
     execute_program(ram, register_file);
     print_registers(register_file);
-    print_RAM(ram);
     
     free(register_file);
     free(commands);
