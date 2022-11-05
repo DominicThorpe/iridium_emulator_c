@@ -48,8 +48,6 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
                         ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
                         GET_REG_VAL(instr_components.nibble_4);
-                if (instr_components.nibble_4 >= 12)
-                    printf("Good");
                 
                 update_register(15, result_reg, registers);
                 break;

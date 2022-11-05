@@ -10,11 +10,11 @@ Takes a code relating to an interrupt code to handle and acts appropriately. Cur
 program interrupts (a.k.a "syscalls") are handled, although system and external interrupts
 will come eventually.
 
-When printing, the `printable` union should be used for integers and floats. This ensures they
-can be represented and printed properly.
+When reading or printing, the `printable` union should be used for integers and floats. This 
+ensures they can be represented and printed properly.
 */
 void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
-    // represent values that can be printed
+    // represent values that can be read or printed
     union {
         int i;
         float f;
@@ -23,6 +23,7 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
     // set the upper 16 bits of the value to print to $g8, and the lower 16 bits to $g9
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
+    Register upper_bits, lower_bits;
     switch (code) {
         case 1:  // print signed int in $g8, $g9
             printf("%d\n", printable.i);
@@ -33,8 +34,29 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
             break;
 
         case 3:  // print str starting at addr in $ua, $g9, ending at next 0x0000 in RAM
+            printf("Valid unimplemented syscall detected!\n");
+            break;
+
         case 4:  // read int
+            scanf("%d", &printable.i);
+
+            upper_bits.word_16 = (printable.i & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = printable.i & 0x0000FFFF;
+
+            update_register(9, upper_bits, registers);
+            update_register(10, lower_bits, registers);
+            break;
+
         case 5:  // read float
+            scanf("%f", &printable.f);
+
+            upper_bits.word_16 = (printable.i & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = printable.i & 0x0000FFFF;
+
+            update_register(9, upper_bits, registers);
+            update_register(10, lower_bits, registers);
+            break;
+
         case 6:  // read str into addr in $ua, $g9
         case 7:  // allocate heap memory, length in bytes of len at $g8, $g9
         case 8:  // open file with name in str starting at addr in $g9, in mode in $g8
@@ -47,7 +69,7 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
         case 15: // set seed for random num generator to $g8, $g9
         case 16: // get random integer into $g9
         case 17: // get random float into $g8, $g9
-            printf("Valid syscall detected!");
+            printf("Valid unimplemented syscall detected!\n");
             break;
 
         case 18: // print integer in $g9 as hex
