@@ -24,6 +24,8 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
     Register upper_bits, lower_bits;
+    unsigned int addr_to_get, offset, buffer_len;
+    wchar_t char_to_print, *str_input_buffer;
     switch (code) {
         case 1:  // print signed int in $g8, $g9
             printf("%d\n", printable.i);
@@ -34,7 +36,16 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
             break;
 
         case 3:  // print str starting at addr in $ua, $g9, ending at next 0x0000 in RAM
-            printf("Valid unimplemented syscall detected!\n");
+            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            offset = 0;
+            while (get_from_ram(ram, addr_to_get + offset) != 0) {
+                char_to_print = get_from_ram(ram, addr_to_get + offset);
+                printf("%c", char_to_print);
+                offset++;
+            }
+
+            printf("\n");
+            
             break;
 
         case 4:  // read int
@@ -57,7 +68,32 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
             update_register(10, lower_bits, registers);
             break;
 
-        case 6:  // read str into addr in $ua, $g9
+        case 6:  // read str into addr in $ua, $g9 of length in $g8
+            // allocate size of buffer of characters to read
+            buffer_len = get_register(9, registers).word_16;
+            str_input_buffer = malloc(buffer_len * sizeof(wchar_t)); 
+
+            // flush standard input and then get the string from the user
+            fflush(stdin);
+            fgetws(str_input_buffer, buffer_len, stdin);
+
+            // remove final line feed
+            for (unsigned int  i = buffer_len - 1; i > 0; i--) {
+                if (str_input_buffer[i] == 0xA) {
+                    str_input_buffer[i] = 0;
+                    break;
+                }
+            }
+
+            // add to ram
+            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            for (unsigned int i = 0; i < buffer_len; i++) {
+                add_to_ram(ram, addr_to_get + i, str_input_buffer[i]);
+            }
+
+            free(str_input_buffer);
+            break;
+
         case 7:  // allocate heap memory, length in bytes of len at $g8, $g9
         case 8:  // open file with name in str starting at addr in $g9, in mode in $g8
         case 9:  // read block of data from opened file into addr starting at $g9, offset block by $g8
