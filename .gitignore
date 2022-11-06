@@ -1,5 +1,6 @@
 *.exe
 *.ird
+*.drive
 .vscode
 
 !bin/*
