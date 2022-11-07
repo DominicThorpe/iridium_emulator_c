@@ -92,11 +92,11 @@ int main(int argc, char *argv[]) {
     init_formatted_drive("my_drive.drive");
     FILE* drive;
 
-    remove("my_drive.drive"); // here for debug purposes
     drive = fopen("my_drive.drive", "r+");
     create_file(drive, "new_file.txt", ".", 10);
-    create_file(drive, "my_dir/", ".", 12);
-    create_file(drive, "my_dir/", ".", 5);
+    create_file(drive, "new123f-ile.c", ".", 10);
+    create_file(drive, "file.", ".", 10);
+    create_file(drive, "file&licious.exe", ".", 10);
     
     free(register_file);
     free(commands);

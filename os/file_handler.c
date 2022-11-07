@@ -11,6 +11,8 @@ not be used at all, depending on how the implementation goes.
 #include "file_handler.h"
 
 #define FAT_SIZE 4194304 // The memory allocated to each table
+#define TRUE 1
+#define FALSE 0
 
 
 /*
@@ -52,6 +54,42 @@ void init_formatted_drive(char* dirname) {
 
 
 /*
+Takes a filename and checks it is valid based on the following requirements:
+  - contains only ASCII characters a-z, A-Z, 0-9, space, -, and _
+  - ends with a dot and some characters a-z
+  - is not more than 24 characters
+*/
+int validate_filename(char* filename) {
+    if (strlen(filename) > 24)
+        return -1;
+
+    int found_dot = FALSE;
+    int found_type = FALSE;
+    for (int i = 0; i < strlen(filename); i++) {
+        if (filename[i] == '.') {
+            found_dot = TRUE;
+            continue;
+        } else if (found_dot == TRUE)
+            found_type = TRUE;
+        
+        if (
+            filename[i] != 0x20 && // allow space
+            filename[i] != 0x2D && // allow dash
+            filename[i] != 0x5F && // allow underscore
+            !(filename[i] > 0x40 && filename[i] < 0x5B) && // allow A-Z
+            !(filename[i] > 0x60 && filename[i] < 0x7B) && // allow a-z
+            !(filename[i] > 0x2F && filename[i] < 0x3A) // allow 0-9
+        ) return -1;
+    }
+
+    if (found_type == FALSE)
+        return -1;
+
+    return 0;    
+}
+
+
+/*
 Takes a filename and a directory to put it in. Filename is treated as a directory if it has a trailing
 slash '/'. This is added to the relevant directory as a file or subdirectory with the number of sectors
 specified allocated to it.
@@ -63,6 +101,9 @@ The process for creating a file is as follows:
   - Add the file header to the first sector, and the footer to each other sector
 */
 int create_file(FILE* drive, char* filename, char* directory, int sectors) {
+    if (validate_filename(filename) != 0)
+        return -1;
+
     char* file_alloc_table = malloc(sizeof(char) * FAT_SIZE);
     if (file_alloc_table == NULL) {
         printf("Insufficient resources available to read drive\n");
