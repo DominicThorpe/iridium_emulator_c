@@ -90,13 +90,6 @@ int main(int argc, char *argv[]) {
     print_registers(register_file);
     // print_RAM(ram);
     init_formatted_drive("my_drive.drive");
-    FILE* drive;
-
-    drive = fopen("my_drive.drive", "r+");
-    create_file(drive, "new_file.txt", ".", 10);
-    create_file(drive, "new123f-ile.c", ".", 10);
-    create_file(drive, "file.", ".", 10);
-    create_file(drive, "file&licious.exe", ".", 10);
     
     free(register_file);
     free(commands);

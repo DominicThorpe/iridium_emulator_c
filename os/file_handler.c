@@ -48,6 +48,8 @@ void init_formatted_drive(char* dirname) {
     fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
     fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
 
+    create_file(drive, "/", "", 1);
+
     fclose(drive);
     free(drive);
 }
@@ -60,30 +62,41 @@ Takes a filename and checks it is valid based on the following requirements:
   - is not more than 24 characters
 */
 int validate_filename(char* filename) {
-    if (strlen(filename) > 24)
+    if (strlen(filename) > 24 || strlen(filename) == 0)
         return -1;
+
+    // root directory "/" is valid
+    if (strcmp(filename, "/") == 0)
+        return 0;
+
+    char* name_to_check = filename;
+    if (filename[strlen(filename) - 1] == '/')
+        name_to_check[strlen(name_to_check) - 1] = '\0';
 
     int found_dot = FALSE;
     int found_type = FALSE;
-    for (int i = 0; i < strlen(filename); i++) {
-        if (filename[i] == '.') {
+    for (int i = 0; i < strlen(name_to_check); i++) {
+        if (name_to_check[i] == '.') {
             found_dot = TRUE;
             continue;
         } else if (found_dot == TRUE)
             found_type = TRUE;
         
         if (
-            filename[i] != 0x20 && // allow space
-            filename[i] != 0x2D && // allow dash
-            filename[i] != 0x5F && // allow underscore
-            !(filename[i] > 0x40 && filename[i] < 0x5B) && // allow A-Z
-            !(filename[i] > 0x60 && filename[i] < 0x7B) && // allow a-z
-            !(filename[i] > 0x2F && filename[i] < 0x3A) // allow 0-9
+            name_to_check[i] != 0x20 && // allow space
+            name_to_check[i] != 0x2D && // allow -
+            name_to_check[i] != 0x5F && // allow _
+            !(name_to_check[i] > 0x40 && name_to_check[i] < 0x5B) && // allow A-Z
+            !(name_to_check[i] > 0x60 && name_to_check[i] < 0x7B) && // allow a-z
+            !(name_to_check[i] > 0x2F && name_to_check[i] < 0x3A) // allow 0-9
         ) return -1;
     }
 
-    if (found_type == FALSE)
-        return -1;
+    // must have valid file extension or be a directory
+    if (
+        (found_type == FALSE && !(filename[strlen(filename) - 1] == '/')) || 
+        (found_dot == TRUE && filename[strlen(filename) - 1] == '/')
+    ) return -1;
 
     return 0;    
 }
@@ -99,10 +112,17 @@ The process for creating a file is as follows:
   - Mark those sectors as in use
   - Add end of chain marker
   - Add the file header to the first sector, and the footer to each other sector
+
+Note that when creating a directory, the directory will always take up 1 sector, regardless of how many
+were passed into the sectors parameter.
 */
 int create_file(FILE* drive, char* filename, char* directory, int sectors) {
     if (validate_filename(filename) != 0)
         return -1;
+    
+    // a directory is always 1 sector
+    if (filename[strlen(filename) - 1] == '/')
+        sectors = 1;
 
     char* file_alloc_table = malloc(sizeof(char) * FAT_SIZE);
     if (file_alloc_table == NULL) {
@@ -145,7 +165,10 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
 
     char* table_val = malloc(2);
     for (int i = 0; i < sectors; i++) {
-        if (i == sectors - 1) {
+        if (filename[strlen(filename) - 1] == '/') {
+            table_val[0] = (char)0xFF;
+            table_val[1] = (char)0xFF;
+        } else if (i == sectors - 1) {
             table_val[0] = (char)0xF8;
             table_val[1] = (char)0xFF;
         } else {
@@ -156,16 +179,8 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
         fseek(drive, file_pos + (i * 2), SEEK_SET);
         fwrite(table_val, sizeof(char), 2, drive);
     }
+    
     free(table_val);
-
-        
-    // handle create directory
-    if (filename[strlen(filename) - 1] == '/') {
-        printf("Found dir\n");
-    }
-
-    // handle create file
-    printf("Found file\n");
     free(buffer);
 
     return 0;
