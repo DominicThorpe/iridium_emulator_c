@@ -36,27 +36,19 @@ void init_formatted_drive(char* dirname) {
     
     drive = fopen(dirname, "w");
 
-    // init all cells to 0
-    char* bytes_to_write = malloc(FAT_SIZE);
-    if (bytes_to_write == NULL) {
-        printf("Insufficient resources available to initialise new drive\n");
-        exit(-6);
-    }
-
-    for (long i = 0; i < FAT_SIZE; i++) {
-        bytes_to_write[i] = '\0';
-    }
-    
-    
     // create 2 identical tables which mirror each others
-    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
+    fseek(drive, FAT_SIZE, SEEK_SET);
+    fprintf(drive, "\0");
 
     // initialise the rest of the drive to 0
-    long space_left_to_alloc = DRIVE_SIZE - FAT_SIZE;
-    for (int i = 0; i < 1023; i++) {
-        if (fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive) != 0)
-            printf("FAIL\n");
+    printf("Initialising hard drive...\n");
+    char null_byte[1];
+    null_byte[0] = '\0';
+    for (int i = 0; i < 2048; i++) {
+        fseek(drive, FAT_SIZE, SEEK_CUR);
+        fwrite(null_byte, 1, 1, drive);
     }
+    printf("Hard drive initialised!\n");
 
     create_file(drive, "/", "", 1);
 
