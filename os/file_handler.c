@@ -10,8 +10,9 @@ not be used at all, depending on how the implementation goes.
 #include <string.h>
 #include "file_handler.h"
 
-#define FAT_SIZE        524288 // The memory allocated to each table
-#define TABLE_BOUNDARY  262144 // Boundary between main & mirror table
+#define DRIVE_SIZE      1073741824  // total size of the hard drive
+#define TABLE_BOUNDARY  524288      // The memory allocated to each table
+#define FAT_SIZE        1048576     // Boundary between main & mirror table
 
 #define TRUE 1
 #define FALSE 0
@@ -46,18 +47,20 @@ void init_formatted_drive(char* dirname) {
         bytes_to_write[i] = '\0';
     }
     
+    
     // create 2 identical tables which mirror each others
     fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
-    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
 
-    fseek(drive, TABLE_BOUNDARY, SEEK_CUR);
-    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
-    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
+    // initialise the rest of the drive to 0
+    long space_left_to_alloc = DRIVE_SIZE - FAT_SIZE;
+    for (int i = 0; i < 1023; i++) {
+        if (fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive) != 0)
+            printf("FAIL\n");
+    }
 
     create_file(drive, "/", "", 1);
 
     fclose(drive);
-    free(drive);
 }
 
 
@@ -104,32 +107,11 @@ int validate_filename(char* filename) {
         (found_dot == TRUE && filename[strlen(filename) - 1] == '/')
     ) return -1;
 
-    return 0;    
+    return 0;
 }
 
 
-/*
-Takes a filename and a directory to put it in. Filename is treated as a directory if it has a trailing
-slash '/'. This is added to the relevant directory as a file or subdirectory with the number of sectors
-specified allocated to it.
-
-The process for creating a file is as follows:
-  - Locate a run of sectors on the drive which are empty and of sufficient size to hold the file
-  - Mark those sectors as in use
-  - Add end of chain marker
-  - Add the file header to the first sector, and the footer to each other sector
-
-Note that when creating a directory, the directory will always take up 1 sector, regardless of how many
-were passed into the sectors parameter.
-*/
-int create_file(FILE* drive, char* filename, char* directory, int sectors) {
-    if (validate_filename(filename) != 0)
-        return -1;
-    
-    // a directory is always 1 sector
-    if (filename[strlen(filename) - 1] == '/')
-        sectors = 1;
-
+int mark_dir_in_FAT(FILE* drive, int sectors, int is_directory) {
     char* file_alloc_table = malloc(sizeof(char) * FAT_SIZE);
     if (file_alloc_table == NULL) {
         printf("Insufficient resources available to read drive\n");
@@ -171,7 +153,7 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
 
     char* table_val = malloc(2);
     for (int i = 0; i < sectors; i++) {
-        if (filename[strlen(filename) - 1] == '/') {
+        if (is_directory == TRUE) {
             table_val[0] = (char)0xFF;
             table_val[1] = (char)0xFF;
         } else if (i == sectors - 1) {
@@ -195,6 +177,40 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
     free(buffer);
 
     return 0;
+}
+
+
+/*
+Takes a filename and a directory to put it in. Filename is treated as a directory if it has a trailing
+slash '/'. This is added to the relevant directory as a file or subdirectory with the number of sectors
+specified allocated to it.
+
+The process for creating a file is as follows:
+  - Locate a run of sectors on the drive which are empty and of sufficient size to hold the file
+  - Mark those sectors as in use
+  - Add end of chain marker
+  - Add the file header to the first sector, and the footer to each other sector
+
+Note that when creating a directory, the directory will always take up 1 sector, regardless of how many
+were passed into the sectors parameter.
+*/
+int create_file(FILE* drive, char* filename, char* directory, int sectors) {
+    if (validate_filename(filename) != 0) {
+        printf("'%s' is an invalid filename\n", filename);
+        return -1;
+    }
+    
+    // a directory is always 1 sector
+    int is_directory = FALSE;
+    if (filename[strlen(filename) - 1] == '/') {
+        sectors = 1;
+        is_directory = TRUE;
+    }
+
+    if (mark_dir_in_FAT(drive, sectors, is_directory) != 0) {
+        printf("Could not add file to FAT\n");
+        return -1;
+    }
 }
 
 

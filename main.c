@@ -90,7 +90,7 @@ int main(int argc, char *argv[]) {
     print_registers(register_file);
     // print_RAM(ram);
     init_formatted_drive("my_drive.drive");
-    FILE* drive = fopen("my_drive.drive", "r+");
+    FILE* drive = fopen("my_drive.drive", "r+b");
     create_file(drive, "smth.txt", "/", 10);
     create_file(drive, "smth_new.txt", "/", 5);
     
