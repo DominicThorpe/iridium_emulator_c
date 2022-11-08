@@ -10,17 +10,19 @@ not be used at all, depending on how the implementation goes.
 #include <string.h>
 #include "file_handler.h"
 
-#define FAT_SIZE 4194304 // The memory allocated to each table
+#define FAT_SIZE        524288 // The memory allocated to each table
+#define TABLE_BOUNDARY  262144 // Boundary between main & mirror table
+
 #define TRUE 1
 #define FALSE 0
 
 
 /*
-Creates a new FAT-16 formatted drive with 16GB of capacity, deleting/overwriting any it finds in the
+Creates a new FAT-16 formatted drive with 2GB of capacity, deleting/overwriting any it finds in the
 same directory.
 
 In the beginning, all cells in the map are set to 0, which means that it is unallocated. The cells
-are 4098 bytes (4KiB) in size, so for 16 GiB, there must be 4MiB of memory allocated to the tables
+are 4098 bytes (4KiB) in size, so for 512KiB, there must be 4MiB of memory allocated to the tables
 to store it all.
 */
 void init_formatted_drive(char* dirname) {
@@ -45,6 +47,10 @@ void init_formatted_drive(char* dirname) {
     }
     
     // create 2 identical tables which mirror each others
+    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
+    fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
+
+    fseek(drive, TABLE_BOUNDARY, SEEK_CUR);
     fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
     fwrite(bytes_to_write, sizeof(char), FAT_SIZE, drive);
 
@@ -176,7 +182,12 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
             table_val[1] = (char)((i + 1) >> 16) & 0xFFFF;
         }
 
+        // write to main table
         fseek(drive, file_pos + (i * 2), SEEK_SET);
+        fwrite(table_val, sizeof(char), 2, drive);
+
+        // write to mirror table
+        fseek(drive, TABLE_BOUNDARY + file_pos + (i * 2), SEEK_SET);
         fwrite(table_val, sizeof(char), 2, drive);
     }
     
