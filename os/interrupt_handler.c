@@ -102,10 +102,31 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
         case 12: // MIDI out, MIDI code in $g9
         case 13: // get system time into $g8 and $g9
         case 14: // sleep for milliseconds in $g8, $g9
-        case 15: // set seed for random num generator to $g8, $g9
-        case 16: // get random integer into $g9
-        case 17: // get random float into $g8, $g9
             printf("Valid unimplemented syscall detected!\n");
+            break;
+
+        case 15: // set seed for random num generator to $g8, $g9
+            printable.i = get_register(9, registers).word_16 << 16;
+            printable.i |= get_register(10, registers).word_16;
+            srand(printable.i);
+            break;
+
+        case 16: // get random integer into $g9
+            printable.i= rand();
+            upper_bits.word_16 = (printable.i>> 16) & 0xFFFF;
+            lower_bits.word_16 = printable.i& 0xFFFF;
+            
+            update_register(9, upper_bits, registers);
+            update_register(10, lower_bits, registers);
+            break;
+
+        case 17: // get random float into $g8, $g9
+            printable.f = (float)rand() / (float)(RAND_MAX);
+            upper_bits.word_16 = (printable.i >> 16) & 0xFFFF;
+            lower_bits.word_16 = printable.i & 0xFFFF;
+
+            update_register(9, upper_bits, registers);
+            update_register(10, lower_bits, registers);
             break;
 
         case 18: // print integer in $g9 as hex
