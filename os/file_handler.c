@@ -10,9 +10,9 @@ not be used at all, depending on how the implementation goes.
 #include <string.h>
 #include "file_handler.h"
 
-#define DRIVE_SIZE      1073741824  // total size of the hard drive
-#define TABLE_BOUNDARY  524288      // The memory allocated to each table
-#define FAT_SIZE        1048576     // Boundary between main & mirror table
+#define DRIVE_SIZE      0x40000000 // total size of the hard drive
+#define TABLE_BOUNDARY  0x80000    // The memory allocated to each table
+#define FAT_SIZE        0x100000   // Boundary between main & mirror table
 
 #define TRUE 1
 #define FALSE 0
@@ -103,6 +103,16 @@ int validate_filename(char* filename) {
 }
 
 
+/*
+Takes a reference to the file which represents the hard drive and a number of sectors to mark as
+taken, plus a parameter to say if this is a directory or not. Directories always take up 1 sector
+regardless of the sectors parameter.
+
+The sectors taken are marked as 0x0000, 0x0100, 0x0200 ... 0xNNNN, and the final sector is 0xF8FF,
+all of which are little-endian. Directory sectors are marked as 0xFFFF.
+
+The return value is the pointer to the start of the first sector in the newly allocated file.
+*/
 int mark_dir_in_FAT(FILE* drive, int sectors, int is_directory) {
     char* file_alloc_table = malloc(sizeof(char) * FAT_SIZE);
     if (file_alloc_table == NULL) {
@@ -168,7 +178,40 @@ int mark_dir_in_FAT(FILE* drive, int sectors, int is_directory) {
     free(table_val);
     free(buffer);
 
-    return 0;
+    return FAT_SIZE + ((file_pos / 2) * 4096);
+}
+
+
+/*
+Generates a sector header, which is formatted as follows and takes up a total of 32 bytes:
+  - 24 bytes for filename encoded in ASCII
+  - 4 bytes for the pointer to the start of the sector at the start of the file
+  - 4 bytes for the pointer to the start of the next file (0xFF if this is the last sector)
+
+The header is passed as a reference and is modified in place. 
+*/
+void generate_header(char* header, char* filename, long start_of_file_ptr, long next_sector_ptr) {
+    if (strlen(filename) > 24) {
+        printf("Filename %s is too long!", filename);
+        exit(-10);
+    }
+
+    for (int i = 0; i < 24; i++) {
+        header[i] = '\0';
+    }
+    strcpy(header, filename);
+    
+    for (int i = 24; i < 28; i++) {
+        /* code */
+        header[i] = start_of_file_ptr & 0xFF;
+        start_of_file_ptr = start_of_file_ptr >> 8;
+    }
+    
+
+    for (int i = 28; i < 32; i++) {
+        header[i] = next_sector_ptr & 0xFF;
+        next_sector_ptr = next_sector_ptr >> 8;
+    }
 }
 
 
@@ -199,9 +242,23 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
         is_directory = TRUE;
     }
 
-    if (mark_dir_in_FAT(drive, sectors, is_directory) != 0) {
+    long new_dir_ptr = mark_dir_in_FAT(drive, sectors, is_directory);
+    if (new_dir_ptr < 0) {
         printf("Could not add file to FAT\n");
         return -1;
+    }
+
+    fseek(drive, new_dir_ptr, SEEK_SET);
+
+    // 24 bytes for filename, 4 for chain start ptr, 4 for next sector ptr
+    char header[32];
+    long next_ptr;
+    for (int i = 0; i < sectors; i++) {
+        next_ptr = i == sectors - 1 ? -1 : new_dir_ptr + ((i + 1) * 4096);
+
+        generate_header(header, filename, new_dir_ptr, next_ptr);
+        fwrite(header, 1, 32, drive);
+        fseek(drive, 4096 - 32, SEEK_CUR);
     }
 }
 
