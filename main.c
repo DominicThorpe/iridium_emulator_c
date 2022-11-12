@@ -91,8 +91,12 @@ int main(int argc, char *argv[]) {
     // print_RAM(ram);
     init_formatted_drive("my_drive.drive");
     FILE* drive = fopen("my_drive.drive", "r+b");
-    create_file(drive, "smth.txt", "/", 10);
-    create_file(drive, "smth_new.txt", "/", 5);
+
+    char str[32] = "/";
+    create_file(drive, "smth.txt", str, 10);
+
+    char o_str[32] = "/";
+    create_file(drive, "smth_new.txt", o_str, 5);
     
     free(register_file);
     free(commands);

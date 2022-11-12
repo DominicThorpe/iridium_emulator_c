@@ -216,6 +216,48 @@ void generate_header(char* header, char* filename, long start_of_file_ptr, long 
 
 
 /*
+Moves the file pointer to the start of the first sector of the specified directory. Requires an absolute
+path to work.
+
+Works by splitting up the directory and then recursively iterating through the directories until it gets
+to the final desired directory.
+*/
+void navigate_to_dir(FILE* drive, char* directory) {
+    fseek(drive, 32, SEEK_CUR); // skip the 32 byte directory header
+    if (directory[0] != '/') {
+        printf("Invalid directory %s\n", directory);
+        exit(-11);
+    }
+
+    // get next dir name, no not recur if no more directories to navigate
+    char* next_dir_name = malloc(24);
+    next_dir_name = strtok(directory, "/");
+    if (next_dir_name == NULL)
+        return;
+    
+    long parent_addr = ftell(drive);
+    long next_addr = -1;
+    char dir_name[24];
+    int dir_index = 2; // current file being checked (skips the parent and own dir pointers) 
+    while (next_addr != 0) {
+        fseek(drive, parent_addr + (dir_index * 4), SEEK_SET);
+        fread(&next_addr, sizeof(int), 1, drive);
+        fseek(drive, next_addr, SEEK_SET);
+        fread(dir_name, 1, 24, drive);
+
+        if (strcmp(dir_name, next_dir_name) == 0) {
+            navigate_to_dir(drive, directory);
+            break;
+        }
+
+        dir_index++;
+    }
+
+    free(next_dir_name);
+}
+
+
+/*
 Takes a filename and a directory to put it in. Filename is treated as a directory if it has a trailing
 slash '/'. This is added to the relevant directory as a file or subdirectory with the number of sectors
 specified allocated to it.
@@ -259,6 +301,20 @@ int create_file(FILE* drive, char* filename, char* directory, int sectors) {
         generate_header(header, filename, new_dir_ptr, next_ptr);
         fwrite(header, 1, 32, drive);
         fseek(drive, 4096 - 32, SEEK_CUR);
+    }
+
+    if (strcmp(directory, "") != 0) {
+        fseek(drive, FAT_SIZE, SEEK_SET); // skip header
+        navigate_to_dir(drive, directory);
+
+        int pointer;
+        fread(&pointer, 4, 1, drive);
+        while (pointer != 0) {
+            fread(&pointer, 4, 1, drive);
+        }
+        fseek(drive, -4, SEEK_CUR); // move back to start of section just read
+        
+        fwrite(&new_dir_ptr, 4, 1, drive);
     }
 }
 
