@@ -3,7 +3,6 @@
 #include "registers.h"
 #include "internal_memory.h"
 #include "control_unit.h"
-#include "os/file_handler.h"
 
 #define DATA_SECTION_OFFSET 0x00C00000
 #define TRUE 1
@@ -88,15 +87,6 @@ int main(int argc, char *argv[]) {
 
     execute_program(ram, register_file);
     print_registers(register_file);
-    // print_RAM(ram);
-    init_formatted_drive("my_drive.drive");
-    FILE* drive = fopen("my_drive.drive", "r+b");
-
-    char str[32] = "/";
-    create_file(drive, "smth.txt", str, 10);
-
-    char o_str[32] = "/";
-    create_file(drive, "smth_new.txt", o_str, 5);
     
     free(register_file);
     free(commands);
