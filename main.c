@@ -88,6 +88,10 @@ int main(int argc, char *argv[]) {
 
     init_kernel();
     start_process(0x6000, 2);
+    start_process(0x8000, 2);
+    start_process(0xA000, 2);
+    kill_process(2);
+    start_process(0xD600, 2);
     execute_program(ram, register_file);
     print_processes();
     print_registers(register_file);

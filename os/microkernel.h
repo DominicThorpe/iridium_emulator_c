@@ -9,6 +9,7 @@ typedef struct ProcessStruct {
 
 void init_kernel();
 int start_process(long memory_loc, int permissions);
+void kill_process(int id);
 void print_processes();
 
 #endif

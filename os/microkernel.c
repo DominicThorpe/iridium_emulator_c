@@ -24,7 +24,7 @@ static int active_processes = 0;
 // Initialises the kernel and starts the process scheduler to present the UI to the user and start
 // the start-up process, and load relevant memory.
 void init_kernel() {
-    system("cls");
+    // system("cls");
 
     process_array_size += PROCESS_ARRAY_VOLUME;
     processes = malloc(sizeof( Process* ) * PROCESS_ARRAY_VOLUME);
@@ -33,7 +33,7 @@ void init_kernel() {
     }
     
     
-    start_process(0, 1);
+    start_process(0, 0);
 }
 
 
@@ -60,11 +60,10 @@ int start_process(long memory_loc, int permissions) {
             processes[i] = malloc(sizeof(Process));
             *processes[i] = new_process;
 
-            break;
+            active_processes++;
+            return i;
         }
     }
-
-    active_processes++;
 }
 
 
@@ -80,4 +79,16 @@ void print_processes() {
         );
     }
     printf("\n");
+}
+
+
+// Kills the process with the given id and makes the id and place in the array available
+void kill_process(int id) {
+    for (int i = 0; i < active_processes; i++) {
+        if (processes[i] != NULL && processes[i]->id == id) {
+            free(processes[i]);
+            processes[i] = NULL;
+            active_processes--;
+        }
+    }
 }
