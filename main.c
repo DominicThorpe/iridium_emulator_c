@@ -3,6 +3,7 @@
 #include "registers.h"
 #include "internal_memory.h"
 #include "control_unit.h"
+#include "os/microkernel.h"
 
 #define DATA_SECTION_OFFSET 0x00C00000
 #define TRUE 1
@@ -85,7 +86,10 @@ int main(int argc, char *argv[]) {
         index++;
     }
 
+    init_kernel();
+    start_process(0x6000, 2);
     execute_program(ram, register_file);
+    print_processes();
     print_registers(register_file);
     
     free(register_file);
