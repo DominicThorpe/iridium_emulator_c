@@ -9,6 +9,9 @@ in many functionalities.
 #include <stdlib.h>
 #include <stdio.h>
 #include "microkernel.h"
+#include "../control_unit.h"
+#include "../registers.h"
+#include "../internal_memory.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -19,6 +22,7 @@ in many functionalities.
 static Process** processes;
 static int process_array_size = 0;
 static int active_processes = 0;
+static long long internal_count = 0; // total number of clock ticks so far
 
 
 // Initialises the kernel and starts the process scheduler to present the UI to the user and start
@@ -54,7 +58,8 @@ int start_process(long memory_loc, int permissions) {
             Process new_process = {
                 id: i,
                 permissions: permissions,
-                memory_loc: memory_loc
+                memory_loc: memory_loc,
+                current_pc: 0,
             };
 
             processes[i] = malloc(sizeof(Process));
@@ -69,13 +74,14 @@ int start_process(long memory_loc, int permissions) {
 
 // Prints out all the active processes
 void print_processes() {
-    printf("\nID\tPermit\tAddr\n");
+    printf("\nID\tPermit\tAddr\t\tPC\n");
     for (int i = 0; i < active_processes; i++) {
         printf(
             "%d\t%d\t0x%08lX\n", 
             processes[i]->id, 
             processes[i]->permissions, 
-            processes[i]->memory_loc
+            processes[i]->memory_loc,
+            processes[i]->current_pc
         );
     }
     printf("\n");
@@ -91,4 +97,43 @@ void kill_process(int id) {
             active_processes--;
         }
     }
+}
+
+
+/*
+Executes a program until the internal clock tick count reaches cutoff, at which point it yields
+control back to the process scheduler. If a HALT instruction (0xFFFF) is encountered, control is
+yielded.
+
+The return value is the current value in the program counter, or -1 if the process has finished and
+can be killed.
+*/
+long execute_program(RAM* ram, Register* register_file, long start_addr, int cutoff) {
+    // set the PC to the starting point, or where the process last left off
+    long pc_count = start_addr;
+    Register start_addr_reg, page_num;
+    start_addr_reg.word_32 = start_addr;
+    page_num.word_16 = start_addr / 0x10000; // divide start addr by page size to get page number
+    update_register(15, start_addr_reg, register_file);
+    update_register(11, page_num, register_file);
+
+    // go through the instructions one by one
+    // TODO: break when the cutoff has been reached to move on to the next process
+    Register new_count;
+    short command;
+    while (TRUE) {
+        pc_count = get_register(15, register_file).word_32;
+        command = get_from_ram(ram, pc_count);
+        
+        if (command == 0x0000 || command == 0xFFFF)
+            break;
+        
+        execute_command(command, ram, register_file, page_num.word_16);
+        new_count.word_32 = get_register(15, register_file).word_32 + 1;
+        update_register(15, new_count, register_file);
+
+        internal_count++;
+    }
+
+    return pc_count;
 }

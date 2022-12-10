@@ -4,7 +4,7 @@
 #include "internal_memory.h"
 #include "registers.h"
 
-void execute_command(short command, RAM* ram, Register* registers);
+void execute_command(short command, RAM* ram, Register* registers, long page_start_addr);
 
 #endif
 

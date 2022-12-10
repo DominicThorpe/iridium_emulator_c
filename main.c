@@ -5,7 +5,7 @@
 #include "control_unit.h"
 #include "os/microkernel.h"
 
-#define DATA_SECTION_OFFSET 0x00C00000
+#define DATA_SECTION_OFFSET 0x8000
 #define TRUE 1
 #define FALSE 0
 
@@ -33,21 +33,34 @@ char* read_commands(char* filename, long* prog_len) {
 }
 
 
-void execute_program(RAM* ram, Register* register_file) {
-    int pc_count;
-    Register new_count;
-    short command;
-    while (TRUE) {
-        pc_count = get_register(15, register_file).word_32;
-        command = get_from_ram(ram, pc_count);
+void read_program_into_RAM(char* prog_name, RAM* ram, long base_addr) {
+    long prog_len;
+    char* commands = read_commands(prog_name, &prog_len);
+    int data_section = FALSE;
+    int index = 0;
+    for (long i = 0; i < prog_len; i += 2) {
+        short command = ((short)(commands[i] & 0x00FF) << 8) | (short)(commands[i+1] & 0x00FF);
+
+        // found the start of the data section
+        if (commands[i] == 'd' && commands[i+1] == 'a' && 
+                        commands[i+2] == 't' && commands[i+3] == 'a') {
+            data_section = TRUE;
+            index = 0;
+
+            // skip the "data:" label bytes 
+            i += 3;
+            continue;
+        }
         
-        if (command == 0x0000 || command == 0xFFFF)
-            break;
+        if (data_section == FALSE)
+            add_to_ram(ram, index + base_addr, command);
+        else
+            add_to_ram(ram, index + base_addr + DATA_SECTION_OFFSET, command);
         
-        execute_command(command, ram, register_file);
-        new_count.word_32 = get_register(15, register_file).word_32 + 1;
-        update_register(15, new_count, register_file);
+        index++;
     }
+
+    free(commands);
 }
 
 
@@ -60,44 +73,14 @@ int main(int argc, char *argv[]) {
     Register* register_file = init_registers();
     RAM* ram = init_RAM(1024);
 
-    // read program data into RAM
-    long prog_len;
-    char* commands = read_commands(argv[1], &prog_len);
-    int data_section = FALSE;
-    int index = 0;
-    for (long i = 0; i < prog_len; i += 2) {
-        short command = ((short)(commands[i] & 0x00FF) << 8) | (short)(commands[i+1] & 0x00FF);
+    read_program_into_RAM(argv[1], ram, 0x10000);
 
-        // found the start of the data section
-        if (commands[i] == 'd' && commands[i+1] == 'a' && commands[i+2] == 't' && commands[i+3] == 'a') {
-            data_section = TRUE;
-            index = 0;
-
-            // skip the "data:" label bytes 
-            i += 3;
-            continue;
-        }
-        
-        if (data_section == FALSE)
-            add_to_ram(ram, index, command);
-        else
-            add_to_ram(ram, index + DATA_SECTION_OFFSET, command);
-        
-        index++;
-    }
-
-    init_kernel();
-    start_process(0x6000, 2);
-    start_process(0x8000, 2);
-    start_process(0xA000, 2);
-    kill_process(2);
-    start_process(0xD600, 2);
-    execute_program(ram, register_file);
-    print_processes();
+    init_kernel(); // start the kernel process
+    start_process(0x10000, 2);
+    execute_program(ram, register_file, 0x10000, 100);
     print_registers(register_file);
+    print_RAM(ram);
     
-    free(register_file);
-    free(commands);
-    
+    free(register_file);    
     return 0;
 }

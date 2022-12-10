@@ -13,7 +13,7 @@ Takes a 16-bit binary command and decomposes it into 4-bit sections. Extracts th
 from the instruction, and then executes ir appropriately, making the correct modifications to the RAM
 and registers, pointers to which are passed as parameters.
 */
-void execute_command(short command, RAM* ram, Register* registers) {
+void execute_command(short command, RAM* ram, Register* registers, long page_start_addr) {
     // convert instruction to a bit field containing each nibble of data
     struct {
         unsigned int nibble_1 : 4;
@@ -32,6 +32,9 @@ void execute_command(short command, RAM* ram, Register* registers) {
     short code;
     Register result_reg;
 
+    int page_offset = GET_REG_VAL(11);
+    page_offset = page_offset << 16;
+
     if (instr_components.nibble_1 == 0xF) { // 8-bit opcode
         switch (instr_components.nibble_2) {
             case 0x0: // ADDC
@@ -46,16 +49,16 @@ void execute_command(short command, RAM* ram, Register* registers) {
             
             case 0x2: // JUMP
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
                 
                 update_register(15, result_reg, registers);
                 break;
             
             case 0x3: // JAL
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
 
                 update_register(14, get_register(15, registers), registers);
                 update_register(15, result_reg, registers);
@@ -69,8 +72,8 @@ void execute_command(short command, RAM* ram, Register* registers) {
             
             case 0x5: // BEQ
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
 
                 if (alu_flags.zero == 1)
                     update_register(15, result_reg, registers);
@@ -79,8 +82,8 @@ void execute_command(short command, RAM* ram, Register* registers) {
             
             case 0x6: // BNE
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
 
                 if (alu_flags.zero == 0)
                     update_register(15, result_reg, registers);
@@ -89,8 +92,8 @@ void execute_command(short command, RAM* ram, Register* registers) {
             
             case 0x7: // BLT
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
 
                 if (alu_flags.negative == 0)
                     update_register(15, result_reg, registers);
@@ -98,13 +101,15 @@ void execute_command(short command, RAM* ram, Register* registers) {
                 break;
             
             case 0x8: // BGT
+                page_offset = GET_REG_VAL(11);
+                page_offset = page_offset << 16;
                 result_reg.word_32 = instr_components.nibble_4 < 12 ? 
-                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 : 
-                        GET_REG_VAL(instr_components.nibble_4);
+                        ((GET_REG_VAL(instr_components.nibble_3) << 16) + GET_REG_VAL(instr_components.nibble_4)) - 1 + page_offset : 
+                        GET_REG_VAL(instr_components.nibble_4) + page_offset;
 
                 if (alu_flags.negative == 1)
                     update_register(15, result_reg, registers);
-
+                    
                 break;
             
             case 0x9: // IN
@@ -204,6 +209,7 @@ void execute_command(short command, RAM* ram, Register* registers) {
                             get_register(instr_components.nibble_2, registers).word_16 : 
                             get_register(instr_components.nibble_2, registers).word_32 & 0x0000FFFF;
                 
+                printf("Store 0x%04X in 0x%08X\n", immediate, (upper_addr << 16) + (operand_1 + operand_2));
                 add_to_ram(ram, (upper_addr << 16) + (operand_1 + operand_2), immediate);
 
                 break;
