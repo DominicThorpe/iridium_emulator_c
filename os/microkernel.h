@@ -15,6 +15,7 @@ void init_kernel();
 int start_process(long memory_loc, int permissions);
 void kill_process(int id);
 void print_processes();
-long execute_program(RAM* ram, Register* register_file, long start_addr, int cutoff);
+long execute_process(RAM* ram, Register* register_file, long start_addr, int cutoff);
+void run_active_processes(RAM* ram, Register* registers);
 
 #endif

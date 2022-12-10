@@ -15,27 +15,26 @@ in many functionalities.
 
 #define TRUE 1
 #define FALSE 0
-#define PROCESS_BURST_LENGTH 1000
+#define PROCESS_BURST_LENGTH 10
 #define PROCESS_ARRAY_VOLUME 8
 
 
 static Process** processes;
 static int process_array_size = 0;
 static int active_processes = 0;
-static long long internal_count = 0; // total number of clock ticks so far
+static long internal_count = 0; // total number of clock ticks so far
 
 
 // Initialises the kernel and starts the process scheduler to present the UI to the user and start
 // the start-up process, and load relevant memory.
 void init_kernel() {
-    // system("cls");
+    system("cls");
 
     process_array_size += PROCESS_ARRAY_VOLUME;
     processes = malloc(sizeof( Process* ) * PROCESS_ARRAY_VOLUME);
     for (int  i = 0; i < PROCESS_ARRAY_VOLUME; i++) {
         processes[i] = NULL;
     }
-    
     
     start_process(0, 0);
 }
@@ -59,7 +58,7 @@ int start_process(long memory_loc, int permissions) {
                 id: i,
                 permissions: permissions,
                 memory_loc: memory_loc,
-                current_pc: 0,
+                current_pc: memory_loc,
             };
 
             processes[i] = malloc(sizeof(Process));
@@ -108,7 +107,7 @@ yielded.
 The return value is the current value in the program counter, or -1 if the process has finished and
 can be killed.
 */
-long execute_program(RAM* ram, Register* register_file, long start_addr, int cutoff) {
+long execute_process(RAM* ram, Register* register_file, long start_addr, int cutoff) {
     // set the PC to the starting point, or where the process last left off
     long pc_count = start_addr;
     Register start_addr_reg, page_num;
@@ -121,12 +120,12 @@ long execute_program(RAM* ram, Register* register_file, long start_addr, int cut
     // TODO: break when the cutoff has been reached to move on to the next process
     Register new_count;
     short command;
-    while (TRUE) {
+    while (internal_count < cutoff) {
         pc_count = get_register(15, register_file).word_32;
         command = get_from_ram(ram, pc_count);
         
         if (command == 0x0000 || command == 0xFFFF)
-            break;
+            return -1;
         
         execute_command(command, ram, register_file, page_num.word_16);
         new_count.word_32 = get_register(15, register_file).word_32 + 1;
@@ -136,4 +135,32 @@ long execute_program(RAM* ram, Register* register_file, long start_addr, int cut
     }
 
     return pc_count;
+}
+
+
+/*
+Uses round-robin scheduling to run all the active processes for a certain number of clock ticks
+before yielding to the next porcess. This is repeated for all processes until all the processes
+with permissions > 0 die (i.e. active processes > 1).
+*/
+void run_active_processes(RAM* ram, Register* registers) {
+    while (active_processes > 1) {
+        for (int i = 0; i < process_array_size; i++) {
+            if (processes[i] == NULL)
+                continue;
+
+            int result = execute_process(
+                ram, registers, 
+                processes[i]->current_pc,
+                internal_count + PROCESS_BURST_LENGTH
+            );
+
+            if (result < 0 && processes[i]->permissions != 0) {
+                printf("Killing %d\n", processes[i]->id);
+                kill_process(processes[i]->id);
+            }
+            else if (processes[i]->permissions != 0)
+                processes[i]->current_pc = result;
+        }
+    }
 }

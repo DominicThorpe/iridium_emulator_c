@@ -65,8 +65,8 @@ void read_program_into_RAM(char* prog_name, RAM* ram, long base_addr) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        printf("Incorrect number of arguments!\nUSAGE: emulator <filename>\n");
+    if (argc < 2) {
+        printf("Incorrect number of arguments!\nUSAGE: emulator <filename1> <filename2> ...\n");
         exit(-1);
     }
 
@@ -74,10 +74,12 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     read_program_into_RAM(argv[1], ram, 0x10000);
+    read_program_into_RAM(argv[2], ram, 0x20000);
 
     init_kernel(); // start the kernel process
     start_process(0x10000, 2);
-    execute_program(ram, register_file, 0x10000, 100);
+    start_process(0x20000, 2);
+    run_active_processes(ram, register_file);
     print_registers(register_file);
     print_RAM(ram);
     
