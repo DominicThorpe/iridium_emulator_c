@@ -17,6 +17,7 @@ in many functionalities.
 #define FALSE 0
 #define PROCESS_BURST_LENGTH 10
 #define PROCESS_ARRAY_VOLUME 8
+#define PAGE_SIZE 0x10000
 
 
 static Process** processes;
@@ -74,9 +75,12 @@ int start_process(long memory_loc, int permissions) {
 // Prints out all the active processes
 void print_processes() {
     printf("\nID\tPermit\tAddr\t\tPC\n");
-    for (int i = 0; i < active_processes; i++) {
+    for (int i = 0; i < process_array_size; i++) {
+        if (processes[i] == NULL)
+            continue;
+
         printf(
-            "%d\t%d\t0x%08lX\n", 
+            "%d\t%d\t0x%08lX\t%04lX\n", 
             processes[i]->id, 
             processes[i]->permissions, 
             processes[i]->memory_loc,
@@ -89,11 +93,11 @@ void print_processes() {
 
 // Kills the process with the given id and makes the id and place in the array available
 void kill_process(int id) {
-    for (int i = 0; i < active_processes; i++) {
+    for (int i = 0; i < process_array_size; i++) {
         if (processes[i] != NULL && processes[i]->id == id) {
             free(processes[i]);
-            processes[i] = NULL;
             active_processes--;
+            break;
         }
     }
 }
@@ -112,12 +116,11 @@ long execute_process(RAM* ram, Register* register_file, long start_addr, int cut
     long pc_count = start_addr;
     Register start_addr_reg, page_num;
     start_addr_reg.word_32 = start_addr;
-    page_num.word_16 = start_addr / 0x10000; // divide start addr by page size to get page number
+    page_num.word_16 = start_addr / PAGE_SIZE; // divide start addr by page size to get page number
     update_register(15, start_addr_reg, register_file);
     update_register(11, page_num, register_file);
 
-    // go through the instructions one by one
-    // TODO: break when the cutoff has been reached to move on to the next process
+    // go through the instructions one by one until either program end or cutoff is reached
     Register new_count;
     short command;
     while (internal_count < cutoff) {
@@ -139,6 +142,44 @@ long execute_process(RAM* ram, Register* register_file, long start_addr, int cut
 
 
 /*
+Takes the current state of the registers and pushes it to the stack. Location subject to change when
+memory management becomes focus of development - currently end of the process's page with $zero going
+first and $pc going last.
+*/
+void push_registers(RAM* ram, Register* registers, long page_addr) {
+    unsigned long end_addr = page_addr + PAGE_SIZE - 1;
+    add_to_ram(ram, end_addr, 0);
+    
+    for (int i = 1; i < 12; i++) {
+        add_to_ram(ram, end_addr - i, get_register(i, registers).word_16);
+    } for (int i = 12; i < 16; i++) {
+        add_to_ram(ram, end_addr - (i * 2), (get_register(i, registers).word_32 >> 16) & 0xFFFF);
+        add_to_ram(ram, end_addr - (i * 2) + 1, get_register(i, registers).word_32 & 0xFFFF);
+    }
+}
+
+
+/*
+Goes to the end of the specified page and loads the values there into the registers as specified by
+the push_registers function.
+*/
+void pop_registers(RAM* ram, Register* registers, long page_addr) {
+    unsigned long end_addr = page_addr + PAGE_SIZE - 1;
+    Register reg;
+    reg.word_32 = 0;
+
+    registers[0] = reg;
+    for (int i = 1; i < 12; i++) {
+        reg.word_16 = get_from_ram(ram, end_addr - i);
+        update_register(i, reg, registers);
+    } for (int i = 12; i < 16; i++) {
+        reg.word_32 = (get_from_ram(ram, end_addr - (i * 2)) << 16) | (get_from_ram(ram, end_addr - (i * 2) + 1));
+        update_register(i, reg, registers);
+    }
+}
+
+
+/*
 Uses round-robin scheduling to run all the active processes for a certain number of clock ticks
 before yielding to the next porcess. This is repeated for all processes until all the processes
 with permissions > 0 die (i.e. active processes > 1).
@@ -149,6 +190,7 @@ void run_active_processes(RAM* ram, Register* registers) {
             if (processes[i] == NULL)
                 continue;
 
+            pop_registers(ram, registers, processes[i]->memory_loc);
             int result = execute_process(
                 ram, registers, 
                 processes[i]->current_pc,
@@ -156,11 +198,13 @@ void run_active_processes(RAM* ram, Register* registers) {
             );
 
             if (result < 0 && processes[i]->permissions != 0) {
-                printf("Killing %d\n", processes[i]->id);
                 kill_process(processes[i]->id);
+                processes[i] = NULL;
+                continue;
             }
-            else if (processes[i]->permissions != 0)
-                processes[i]->current_pc = result;
+
+            processes[i]->current_pc = result;
+            push_registers(ram, registers, processes[i]->memory_loc);
         }
     }
 }

@@ -112,7 +112,7 @@ short get_from_ram(RAM* ram, unsigned int key) {
         }
     }
     
-    printf("Could not get key %u from RAM\n", key);
+    // printf("Could not get key %u from RAM\n", key);
     return 0;
 }
 
