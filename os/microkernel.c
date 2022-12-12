@@ -114,6 +114,28 @@ long allocate_memory(HeapBlock* root, long size) {
 }
 
 
+// Frees the memory in the heap at the given memory and coalesces it if its friend is also free
+// TODO: coalesce memory
+void free_memory(HeapBlock* root, long address) {
+    // Check if either child is a match and free and NULL it if it is
+    if (root->left_child != NULL && root->left_child->start_addr == address && root->left_child->status == 0) {
+        free(root->left_child);
+        root->left_child = NULL;
+    } else if (root->right_child != NULL && root->right_child->start_addr == address && root->right_child->status == 0) {
+        free(root->right_child);
+        root->right_child = NULL;
+    }
+
+    // If not, find the most appropriate child and recur into it
+    if (root->left_child != NULL && address >= root->left_child->start_addr && address < root->left_child->start_addr + root->left_child->size)
+        free_memory(root->left_child, address);
+    else if (root->right_child != NULL && address >= root->right_child->start_addr && address < root->right_child->start_addr + root->right_child->size)
+        free_memory(root->right_child, address);
+    
+    // If we get there, the memory was not found to free it
+}
+
+
 // Pretty-prints the current memory allocation tree
 void print_malloc_tree(HeapBlock root, int depth) {
     for (int i = 0; i < depth; i++) {
@@ -140,6 +162,12 @@ void init_kernel() {
     }
     
     start_process(0, 0);
+    allocate_memory(processes[0]->heap_root, 500);
+    long mem = allocate_memory(processes[0]->heap_root, 200);
+    allocate_memory(processes[0]->heap_root, 200);
+    allocate_memory(processes[0]->heap_root, 1000);
+    free_memory(processes[0]->heap_root, mem);
+    print_malloc_tree(*processes[0]->heap_root, 0);
 }
 
 
