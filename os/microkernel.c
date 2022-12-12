@@ -72,7 +72,7 @@ Returns the address of the allocated block if one is found, and -1 if one could 
 */
 long allocate_memory(HeapBlock* root, long size) {
     // if memory is taken, do nothing
-    if (size > root->size || root->status == 0) 
+    if (root == NULL || size > root->size || root->status == 0) 
         return -1;
     
     // if root is subdivided, can continue to go down the tree but cannot allocate
@@ -105,7 +105,6 @@ long allocate_memory(HeapBlock* root, long size) {
 
     // found appropriate block to allocate
     else if (root->size >= size && root->status == 1) { // allocate this
-        printf("Found\n");
         root->status = 0;
         return root->start_addr;
     } 
@@ -132,7 +131,14 @@ void free_memory(HeapBlock* root, long address) {
     else if (root->right_child != NULL && address >= root->right_child->start_addr && address < root->right_child->start_addr + root->right_child->size)
         free_memory(root->right_child, address);
     
-    // If we get there, the memory was not found to free it
+    // Coalesce friends if they are both free or NULL
+    if ((root->left_child == NULL || root->left_child->status == 1) && (root->right_child == NULL || root->right_child->status == 1)) {
+        free(root->left_child);
+        free(root->right_child);
+        root->left_child = NULL;
+        root->right_child = NULL;
+        root->status = 1;
+    }
 }
 
 
@@ -162,12 +168,6 @@ void init_kernel() {
     }
     
     start_process(0, 0);
-    allocate_memory(processes[0]->heap_root, 500);
-    long mem = allocate_memory(processes[0]->heap_root, 200);
-    allocate_memory(processes[0]->heap_root, 200);
-    allocate_memory(processes[0]->heap_root, 1000);
-    free_memory(processes[0]->heap_root, mem);
-    print_malloc_tree(*processes[0]->heap_root, 0);
 }
 
 
