@@ -26,6 +26,108 @@ static int active_processes = 0;
 static long internal_count = 0; // total number of clock ticks so far
 
 
+/*
+Creates a new HeapBlock with the given parameters, a status of 1, and NULL left and right 
+children.
+
+Status: 0 = memory allocated, 1 = memory free, 2 = memory subdivided
+*/
+HeapBlock* new_heap_block(long start_addr, long size) {
+    HeapBlock* block = malloc(sizeof(HeapBlock));
+    block->start_addr = start_addr;
+    block->size = size;
+    block->status = 1;
+    block->right_child = NULL;
+    block->left_child = NULL;
+
+    return block;
+}
+
+
+/* 
+Creates a new HeapBlock of at the most appropriate position in memory it can find by
+finding the first fit it can in RAM.
+TODO: Allow for the allocation of multiple pages in memory, maybe use a lookup table?
+*/
+HeapBlock* new_heap_root(long size) {
+    long start_addr = 0x00C00000;
+    for (int i = 0; i < process_array_size; i++) {
+        if (processes[i] == NULL)
+            continue;
+        else if (processes[i]->heap_root->start_addr == start_addr)
+            start_addr += PAGE_SIZE;
+    }    
+
+    HeapBlock* new_block = new_heap_block(start_addr, PAGE_SIZE);
+    return new_block;
+}
+
+
+/*
+Recursive function to start at the root of a process's heap memory and go through it, subdividing
+as necessary by adding new blocks to the binary tree, until it finds an appropriately sized block
+to allocate - uses the friend's system.
+
+Returns the address of the allocated block if one is found, and -1 if one could not be found.
+*/
+long allocate_memory(HeapBlock* root, long size) {
+    // if memory is taken, do nothing
+    if (size > root->size || root->status == 0) 
+        return -1;
+    
+    // if root is subdivided, can continue to go down the tree but cannot allocate
+    else if (root->status == 2) { 
+        long alloc_status = allocate_memory(root->left_child, size);
+        if (alloc_status >= 0)
+            return alloc_status;
+        
+        alloc_status = allocate_memory(root->right_child, size);
+        if (alloc_status >= 0)
+            return alloc_status;
+    }
+    
+    // if memory is free, but too large, create new node and go further down the tree
+    else if (root->size / 2 >= size) {
+        root->status = 2;
+        root->left_child = new_heap_block(root->start_addr, root->size / 2);
+        root->right_child = new_heap_block(root->start_addr + root->size / 2, root->size / 2);
+
+        long child_alloc = allocate_memory(root->left_child, size);
+        if (child_alloc >= 0)
+            return child_alloc;
+
+        child_alloc = allocate_memory(root->right_child, size);
+        if (child_alloc >= 0)
+            return child_alloc;
+        
+        return -1;
+    }
+
+    // found appropriate block to allocate
+    else if (root->size >= size && root->status == 1) { // allocate this
+        printf("Found\n");
+        root->status = 0;
+        return root->start_addr;
+    } 
+    
+    return -1;
+}
+
+
+// Pretty-prints the current memory allocation tree
+void print_malloc_tree(HeapBlock root, int depth) {
+    for (int i = 0; i < depth; i++) {
+        printf("  ");
+    }
+    
+    printf("-%08lX: %04X - %d, (%p, %p)\n", root.start_addr, root.size, root.status, root.left_child, root.right_child);
+    if (root.left_child != NULL)
+        print_malloc_tree( *root.left_child, depth + 1);
+    if (root.right_child != NULL)
+        print_malloc_tree( *root.right_child, depth + 1);
+}
+
+
 // Initialises the kernel and starts the process scheduler to present the UI to the user and start
 // the start-up process, and load relevant memory.
 void init_kernel() {
@@ -60,6 +162,7 @@ int start_process(long memory_loc, int permissions) {
                 permissions: permissions,
                 memory_loc: memory_loc,
                 current_pc: memory_loc,
+                heap_root: new_heap_root(PAGE_SIZE)
             };
 
             processes[i] = malloc(sizeof(Process));
@@ -80,11 +183,12 @@ void print_processes() {
             continue;
 
         printf(
-            "%d\t%d\t0x%08lX\t%04lX\n", 
+            "%d\t%d\t0x%08lX\t%04lX\t%08lX\n", 
             processes[i]->id, 
             processes[i]->permissions, 
             processes[i]->memory_loc,
-            processes[i]->current_pc
+            processes[i]->current_pc,
+            processes[i]->heap_root->start_addr
         );
     }
     printf("\n");

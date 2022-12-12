@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
     init_kernel(); // start the kernel process
     start_process(0x20000, 2);
     start_process(0x10000, 2);
+    print_processes();
     run_active_processes(ram, register_file);
     print_registers(register_file);
     // print_RAM(ram);
