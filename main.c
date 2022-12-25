@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "registers.h"
 #include "internal_memory.h"
 #include "control_unit.h"
@@ -11,20 +12,20 @@
 
 
 // Reads bytes from the specified file and outputs those bytes as a pointer to an array
-char* read_commands(char* filename, long* prog_len) {
+uint16_t* read_commands(char* filename, long* prog_len) {
     FILE *fileptr;
-    char *buffer;
+    uint16_t *buffer;
     long filelen;
 
     fileptr = fopen(filename, "rb");
 
     // determine length of file
     fseek(fileptr, 0, SEEK_END);
-    filelen = ftell(fileptr);
+    filelen = ftell(fileptr) / 2;
     rewind(fileptr);
 
-    buffer = ( char* ) malloc(filelen * sizeof(char));
-    fread(buffer, filelen, 1, fileptr);
+    buffer = malloc(filelen * sizeof(uint16_t));
+    fread(buffer, filelen, sizeof(uint16_t), fileptr);
     fclose(fileptr);
     free(fileptr);
 
@@ -62,34 +63,13 @@ int main(int argc, char *argv[]) {
 
     // read program data into RAM
     long prog_len;
-    char* commands = read_commands(argv[1], &prog_len);
-    int data_section = FALSE;
-    int index = 0;
-    for (long i = 0; i < prog_len; i += 2) {
-        short command = ((short)(commands[i] & 0x00FF) << 8) | (short)(commands[i+1] & 0x00FF);
-
-        // found the start of the data section
-        if (commands[i] == 'd' && commands[i+1] == 'a' && commands[i+2] == 't' && commands[i+3] == 'a') {
-            data_section = TRUE;
-            index = 0;
-
-            // skip the "data:" label bytes 
-            i += 3;
-            continue;
-        }
-        
-        if (data_section == FALSE)
-            add_to_ram(ram, index, command);
-        else
-            add_to_ram(ram, index + DATA_SECTION_OFFSET, command);
-        
-        index++;
-    }
-
+    uint16_t* commands = read_commands(argv[1], &prog_len);
+    
     // execute_program(ram, register_file);
     // print_registers(register_file);
     init_MMU();
-    print_MMU();
+    Process process = new_process(0, commands, prog_len, ram);
+    print_RAM(ram);
     
     free(register_file);
     free(commands);

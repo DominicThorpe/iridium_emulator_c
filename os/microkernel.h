@@ -11,6 +11,7 @@
 #define STACK_PAGE 's'
 
 #include <stdint.h>
+#include "../internal_memory.h"
 
 
 /**
@@ -29,14 +30,13 @@ typedef struct HeapBlock {
  * @brief Used to keep track of all the pages currently created and how they map from logical to 
  * physical memory, and to track available IDs and locations in physical memory.
  */
-typedef struct MMUNode {
+typedef struct MMUEntry {
     uint16_t process_id;
     char type;
     char allocated;
     uint32_t logical_start_addr;
     uint32_t physical_start_addr;
-    struct MMUNode* next;
-} MMUNode;
+} MMUEntry;
 
 
 /**
@@ -45,11 +45,13 @@ typedef struct MMUNode {
 typedef struct Process {
     uint16_t id;
     uint32_t pc;
+    uint32_t max_addr; // the highest valid address
 } Process;
 
 
 void init_MMU();
 void print_MMU();
+Process new_process(uint16_t id, uint16_t* binary_buffer, long prog_len, RAM* ram);
 
 
 #endif

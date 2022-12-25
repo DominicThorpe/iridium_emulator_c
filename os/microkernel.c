@@ -2,31 +2,23 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "microkernel.h"
+#include "../internal_memory.h"
 
 
-MMUNode* MMU_head = NULL;
+MMUEntry* MMU = NULL;
 
 
 /**
- * @brief Initialises the memory management unit (MMU), which is represented as a linked-list, to a
- * full list of unassigned pages. 
+ * @brief Initialises the memory management unit (MMU), which is an inverted page table.
  */
 void init_MMU() {
-    MMU_head = malloc(sizeof(MMUNode));
-    MMU_head->allocated = 0;
-    MMU_head->physical_start_addr = 0;
-    MMU_head->type = FREE_PAGE;
-    MMU_head->next = NULL;
-
-    MMUNode* head = MMU_head;
-    for (int i = 1; i < NUM_PAGES; i++) {
-        head->next = malloc(sizeof(MMUNode));
-        head->next->allocated = 0;
-        head->next->physical_start_addr = i * 4096;
-        head->next->type = FREE_PAGE;
-        head->next->next = NULL;
-
-        head = head->next;
+    MMU = malloc(sizeof(MMUEntry) * NUM_PAGES);
+    for (int i = 0; i < NUM_PAGES; i++) {
+        MMUEntry new_node;
+        new_node.allocated = 0;
+        new_node.physical_start_addr = i * 4096;
+        new_node.type = FREE_PAGE;
+        MMU[i] = new_node;
     }
 }
 
@@ -35,30 +27,81 @@ void init_MMU() {
  * @brief Debug to check the MMU is working correctly.
  */
 void print_MMU() {
-    int index = 0;
-    MMUNode* current = MMU_head;
-    while (current != NULL) {
-        if (current->allocated == 0)
-            printf("%04X: NOT ALLOCATED\n", index);
+    for (int i = 0; i < NUM_PAGES; i++) {
+        if (MMU[i].allocated == 0)
+            printf("%04X: NOT ALLOCATED\n", i);
         else
-            printf("0x%08lX = 0x%08lX\n", current->logical_start_addr, current->physical_start_addr);
-        
-        index++;
-        current = current->next;
+            printf("0x%08lX = 0x%08lX\n", MMU[i].logical_start_addr, MMU[i].physical_start_addr);
     }
+}
+
+
+/**
+ * @brief Takes the ID of a process and assigns a new page to it, if there is one, and returns a
+ * pointer to the page, or NULL if one cannot be found. 
+ * 
+ * @param process_id The ID of the process requesting a page
+ * @param type The type of the new page
+ * @param logical_addr The logical address of the first byte of the page
+ * @return MMUEntry* if a page is found, NULL if not
+ */
+MMUEntry* request_new_page(Process* process, char type) {
+    for (int i = 0; i < NUM_PAGES; i++) {
+        if (MMU[i].allocated == 0) {
+            MMU[i].allocated = 1;
+            MMU[i].process_id = process->id;
+            MMU[i].type = type;
+
+            MMU[i].logical_start_addr = process->max_addr;
+            process->max_addr += PAGE_SIZE;
+
+            return &MMU[i];
+        }
+    }
+
+    return NULL;
+}
+
+
+/**
+ * @brief Get the physical address of a byte from its logical address and process id
+ * 
+ * @param process_id The id of the process the page belongs to
+ * @param logical_addr The logical address of the byte
+ * @return The physical address of the byte
+ */
+uint32_t get_physical_from_logical_addr(uint16_t process_id, uint32_t logical_addr) {
+    for (int i = 0; i < NUM_PAGES; i++) {
+        if (
+            MMU[i].process_id == process_id && 
+            MMU[i].logical_start_addr <= logical_addr && 
+            MMU[i].logical_start_addr + PAGE_SIZE > logical_addr
+        ) return MMU->physical_start_addr + (logical_addr & 0x0FFF);
+    }
+    
+    return -1;
 }
 
 
 /**
  * @brief Creates a new Process type to be run on the processor.
  * 
- * @param id The id of the process
+ * @param id The id of the new process
  * @param binary_buffer The binary code the process runs
- * @return Process
+ * @return New Process struct
  */
-Process new_process(uint16_t id, uint16_t* binary_buffer) {
+Process new_process(uint16_t id, uint16_t* binary_buffer, long prog_len, RAM* ram) {
     Process process;
     process.id = id;
     process.pc = 0;
+    process.max_addr = 0;
+
+    MMUEntry* page = request_new_page(&process, CODE_PAGE);
+    for (long i = 0; i < prog_len; i++) {
+        add_to_ram(ram, get_physical_from_logical_addr(id, i), binary_buffer[i]);
+        if (i >= process.max_addr)
+            page = request_new_page(&process, CODE_PAGE);
+    }
+
     return process;
 }
