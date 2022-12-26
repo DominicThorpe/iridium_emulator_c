@@ -26,12 +26,16 @@ void init_MMU() {
 /**
  * @brief Debug to check the MMU is working correctly.
  */
-void print_MMU() {
-    for (int i = 0; i < NUM_PAGES; i++) {
+void print_MMU(int num_pages) {
+    int pages_to_print = num_pages > 0 ? num_pages : NUM_PAGES;
+    for (int i = 0; i < pages_to_print; i++) {
         if (MMU[i].allocated == 0)
-            printf("%04X: NOT ALLOCATED\n", i);
+            printf("0x%04X: NOT ALLOCATED\n", i);
         else
-            printf("0x%08lX = 0x%08lX\n", MMU[i].logical_start_addr, MMU[i].physical_start_addr);
+            printf(
+                "0x%04lX: 0x%08lX\t(%c)\n", MMU[i].logical_start_addr, 
+                MMU[i].physical_start_addr, MMU[i].type
+            );
     }
 }
 
@@ -96,12 +100,43 @@ Process new_process(uint16_t id, uint16_t* binary_buffer, long prog_len, RAM* ra
     process.pc = 0;
     process.max_addr = 0;
 
-    MMUEntry* page = request_new_page(&process, CODE_PAGE);
+    char section = CODE_PAGE;
+    uint32_t address = 0;
+    MMUEntry* page = request_new_page(&process, section);
     for (long i = 0; i < prog_len; i++) {
-        add_to_ram(ram, get_physical_from_logical_addr(id, i), binary_buffer[i]);
-        if (i >= process.max_addr)
-            page = request_new_page(&process, CODE_PAGE);
+        // check if we have moved into the data section
+        if (binary_buffer[i] == 0x6164 && binary_buffer[i+1] == 0x6174 && binary_buffer[i+2] == 0x003A) {
+            section = DATA_PAGE;
+            page = request_new_page(&process, section);
+            address += address % PAGE_SIZE;
+
+            // skip the data label bytes
+            i += 1;
+            continue;
+        }
+
+        if (binary_buffer[i] == 0x6574 && binary_buffer[i+1] == 0x7478 && binary_buffer[i+2] == 0x003A) {
+            section = TEXT_PAGE;
+            page = request_new_page(&process, section);
+            address += address % PAGE_SIZE;
+
+            // skip the text label bytes
+            i += 1;
+            continue;
+        }
+
+        add_to_ram(ram, get_physical_from_logical_addr(id, address), binary_buffer[i]);
+        if (address >= process.max_addr)
+            page = request_new_page(&process, section);
+        
+        address++;
     }
+
+    // every process defaults to 2 pages for heap and 2 pages for stack
+    request_new_page(&process, HEAP_PAGE);
+    request_new_page(&process, HEAP_PAGE);
+    request_new_page(&process, STACK_PAGE);
+    request_new_page(&process, STACK_PAGE);
 
     return process;
 }

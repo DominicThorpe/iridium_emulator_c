@@ -3,4 +3,5 @@
 *.drive
 .vscode
 
+programs
 !bin/*

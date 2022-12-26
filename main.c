@@ -6,7 +6,6 @@
 #include "control_unit.h"
 #include "os/microkernel.h"
 
-#define DATA_SECTION_OFFSET 0x00C00000
 #define TRUE 1
 #define FALSE 0
 
@@ -70,6 +69,7 @@ int main(int argc, char *argv[]) {
     init_MMU();
     Process process = new_process(0, commands, prog_len, ram);
     print_RAM(ram);
+    print_MMU(10);
     
     free(register_file);
     free(commands);
