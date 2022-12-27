@@ -3,7 +3,7 @@
 #include "registers.h"
 
 
-struct {
+struct ALU_flags {
     unsigned int zero : 1;
     unsigned int negative : 1;
     unsigned int carry : 1;

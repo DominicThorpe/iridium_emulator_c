@@ -1,9 +1,11 @@
 #ifndef REGISTERS
 #define REGISTERS
 
+#include <stdint.h>
+
 typedef union Register {
-    unsigned short word_16;
-    unsigned int word_32;
+    uint16_t word_16;
+    uint32_t word_32;
 } Register;
 
 

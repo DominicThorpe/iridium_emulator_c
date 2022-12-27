@@ -33,26 +33,8 @@ uint16_t* read_commands(char* filename, long* prog_len) {
 }
 
 
-void execute_program(RAM* ram, Register* register_file) {
-    int pc_count;
-    Register new_count;
-    short command;
-    while (TRUE) {
-        pc_count = get_register(15, register_file).word_32;
-        command = get_from_ram(ram, pc_count);
-        
-        if (command == 0x0000 || command == 0xFFFF)
-            break;
-        
-        execute_command(command, ram, register_file);
-        new_count.word_32 = get_register(15, register_file).word_32 + 1;
-        update_register(15, new_count, register_file);
-    }
-}
-
-
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
+    if (argc < 2) {
         printf("Incorrect number of arguments!\nUSAGE: emulator <filename>\n");
         exit(-1);
     }
@@ -61,18 +43,16 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     // read program data into RAM
-    long prog_len;
-    uint16_t* commands = read_commands(argv[1], &prog_len);
+    long prog_len_a, prog_len_b;
+    uint16_t* commands_a = read_commands(argv[1], &prog_len_a);
+    uint16_t* commands_b = read_commands(argv[2], &prog_len_b);
     
-    // execute_program(ram, register_file);
-    // print_registers(register_file);
     init_MMU();
-    Process process = new_process(0, commands, prog_len, ram);
-    print_RAM(ram);
-    print_MMU(10);
-    
-    free(register_file);
-    free(commands);
+    init_processes();
+    Process* process_a = new_process(0, commands_a, prog_len_a, ram);
+    Process* process_b = new_process(1, commands_b, prog_len_b, ram);
+    execute_scheduled_processes(ram, register_file);
+    print_registers(register_file);
     
     return 0;
 }
