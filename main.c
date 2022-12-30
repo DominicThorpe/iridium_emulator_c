@@ -51,6 +51,11 @@ int main(int argc, char *argv[]) {
     init_processes();
     Process* process_a = new_process(0, commands_a, prog_len_a, ram);
     Process* process_b = new_process(1, commands_b, prog_len_b, ram);
+
+    allocate_memory(process_a->heap_root, 0x001000);
+    print_malloc_tree(*(process_a->heap_root), 0);
+
+    print_processes();
     execute_scheduled_processes(ram, register_file);
     print_registers(register_file);
     

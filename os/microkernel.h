@@ -2,7 +2,8 @@
 #define MICROKERNEL
 
 #define PAGE_SIZE 4096
-#define NUM_PAGES 0x10000 // 256Mb total data in 65536 pages
+#define NUM_PAGES 0x1000 // 256Mb total data in 65536 pages
+#define HEAP_SIZE 0x100000 // 1Mb heap per process
 #define BURST_LEN 1024
 #define CODE_PAGE 'c' 
 #define TEXT_PAGE 't'
@@ -49,6 +50,7 @@ typedef struct Process {
     uint8_t id;
     uint32_t pc;
     uint32_t max_addr; // the highest valid address
+    HeapBlock* heap_root;
     struct ALU_flags flags;
 } Process;
 
@@ -59,6 +61,10 @@ void print_MMU(int num_pages);
 Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ram);
 MMUEntry* request_new_page(Process* process, char type);
 void execute_scheduled_processes(RAM* ram, Register* registers);
+void print_processes();
+void print_malloc_tree(HeapBlock root, int depth);
+long allocate_memory(HeapBlock* root, uint32_t size);
+void free_memory(HeapBlock* root, long address);
 
 
 #endif

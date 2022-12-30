@@ -51,7 +51,7 @@ void print_MMU(int num_pages) {
             printf("0x%04X: NOT ALLOCATED\n", i);
         else
             printf(
-                "0x%04lX:\t0x%08lX\t(%c)\t%d\n", MMU[i].logical_start_addr, 
+                "0x%08lX:\t0x%08lX\t(%c)\t%d\n", MMU[i].logical_start_addr, 
                 MMU[i].physical_start_addr, MMU[i].type, MMU[i].process_id
             );
     }
@@ -106,6 +106,28 @@ uint32_t get_physical_from_logical_addr(uint16_t process_id, uint32_t logical_ad
 
 
 /**
+ * @brief Creates a new HeapBlock with the given parameters, a status of 1, and NULL left and right 
+ * children.
+ * 
+ * PROBABLY SHOULDN'T BE RETURNED!
+ * 
+ * @param start_addr The address of the first byte of the block
+ * @param size The size in bytes of the block
+ * @return A pointer to the new block
+ */
+HeapBlock* new_heap_block(long start_addr, long size) {
+    HeapBlock* block = malloc(sizeof(HeapBlock));
+    block->start_addr = start_addr;
+    block->size = size;
+    block->status = 1;
+    block->right_child = NULL;
+    block->left_child = NULL;
+
+    return block;
+}
+
+
+/**
  * @brief Creates a new Process type to be run on the processor.
  * 
  * @param id The id of the new process
@@ -156,16 +178,36 @@ Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ra
         address++;
     }
 
-    // every process defaults to 2 pages for heap and 2 pages for stack
-    request_new_page(process, HEAP_PAGE);
-    request_new_page(process, HEAP_PAGE);
-    request_new_page(process, STACK_PAGE);
-    request_new_page(process, STACK_PAGE);
+    // Assign the default number of pages for heap and stack
+    process->heap_root = NULL;
+    for (int i = 0; i < HEAP_SIZE / PAGE_SIZE; i++) {
+        MMUEntry* this = request_new_page(process, HEAP_PAGE);
+        if (process->heap_root == NULL)
+            process->heap_root = new_heap_block(this->logical_start_addr, HEAP_SIZE);
+    }
+
+    for (int i = 0; i < HEAP_SIZE / PAGE_SIZE; i++) {
+        request_new_page(process, STACK_PAGE);
+    }
 
     num_active_processes++;
     processes[id] = process;
 
     return processes[id];
+}
+
+
+void print_processes() {
+    printf("ID\tPC\t\tMax Addr\tHeap Start\n");
+    for (int i = 0; i < max_processes; i++) {
+        if (processes[i] == NULL)
+            continue;
+
+        printf("%d\t0x%08X\t0x%08X\t0x%08X\n", 
+            processes[i]->id, processes[i]->pc, processes[i]->max_addr, 
+            processes[i]->heap_root->start_addr
+        );
+    }
 }
 
 
@@ -230,4 +272,128 @@ void execute_scheduled_processes(RAM* ram, Register* registers) {
             }
         }
     }
+}
+
+
+/**
+ * @brief Recursive function to start at the root of a process's heap memory and go through it, 
+ * subdividing as necessary by adding new blocks to the binary tree, until it finds an appropriately 
+ * sized block to allocate - uses the friend's system.
+ * 
+ * @param root Pointer to the root block in the heap allocation tree
+ * @param size The size of the memory to allocate
+ * @return Returns the address of the allocated block if one is found, and -1 if one could not be found. 
+ */
+long allocate_memory(HeapBlock* root, uint32_t size) {
+    // if memory is taken, do nothing
+    if (root == NULL || size > root->size || root->status == 0)
+        return -1;
+    
+    // if root is subdivided, can continue to go down the tree but cannot allocate
+    else if (root->status == 2) {
+        long alloc_status = allocate_memory(root->left_child, size);
+        if (alloc_status >= 0)
+            return alloc_status;
+        
+        alloc_status = allocate_memory(root->right_child, size);
+        if (alloc_status >= 0)
+            return alloc_status;
+    }
+    
+    // if memory is free, but too large, create new node and go further down the tree
+    else if (root->size / 2 >= size) {
+        root->status = 2;
+        root->left_child = new_heap_block(root->start_addr, root->size / 2);
+        root->right_child = new_heap_block(root->start_addr + root->size / 2, root->size / 2);
+        if (root->left_child == NULL || root->right_child == NULL)
+            printf("Could not find memory for heap tree child node!\n");
+
+        long child_alloc = allocate_memory(root->left_child, size);
+        if (child_alloc >= 0)
+            return child_alloc;
+
+        child_alloc = allocate_memory(root->right_child, size);
+        if (child_alloc >= 0)
+            return child_alloc;
+        
+        return -1;
+    }
+
+    // found appropriate block to allocate
+    else if (root->size >= size && root->status == 1) { // allocate this
+        root->status = 0;
+        return root->start_addr;
+    } 
+    
+    return -1;
+}
+
+
+/**
+ * @brief Frees the memory in the heap at the given memory and coalesces it if its friend is also free
+ * 
+ * @param root Pointer to the root block in the heap allocation tree
+ * @param address The address of the first byte of the block to be freed
+ */
+void free_memory(HeapBlock* root, long address) {
+    // Check if either child is a match and free and NULL it if it is
+    if (
+        root->left_child != NULL && 
+        root->left_child->start_addr == address && 
+        root->left_child->status == 0
+    ) {
+        free(root->left_child);
+        root->left_child = NULL;
+    } else if (
+        root->right_child != NULL && 
+        root->right_child->start_addr == address && 
+        root->right_child->status == 0
+    ) {
+        free(root->right_child);
+        root->right_child = NULL;
+    }
+
+    // If not, find the most appropriate child and recur into it
+    if (
+        root->left_child != NULL && 
+        address >= root->left_child->start_addr && 
+        address < root->left_child->start_addr + root->left_child->size
+    ) free_memory(root->left_child, address);
+    else if (
+        root->right_child != NULL && 
+        address >= root->right_child->start_addr && 
+        address < root->right_child->start_addr + root->right_child->size
+    ) free_memory(root->right_child, address);
+    
+    // Coalesce friends if they are both free or NULL
+    if (
+        (root->left_child == NULL || root->left_child->status == 1) && 
+        (root->right_child == NULL || root->right_child->status == 1)
+    ) {
+        free(root->left_child);
+        free(root->right_child);
+        root->left_child = NULL;
+        root->right_child = NULL;
+        root->status = 1;
+    }
+}
+
+
+/**
+ * @brief Recursively pretty-prints the current memory allocation tree
+ * 
+ * @param root Pointer to the root block in the heap allocation tree
+ * @param depth The current level of the node the tree is currently on
+ */
+void print_malloc_tree(HeapBlock root, int depth) {
+    for (int i = 0; i < depth; i++) {
+        printf("  ");
+    }
+    
+    printf("-%08lX: %04X - %d, (%p, %p)\n", 
+            root.start_addr, root.size, root.status, root.left_child, root.right_child);
+    if (root.left_child != NULL)
+        print_malloc_tree( *root.left_child, depth + 1);
+    if (root.right_child != NULL)
+        print_malloc_tree( *root.right_child, depth + 1);
 }
