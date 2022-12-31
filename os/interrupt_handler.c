@@ -26,6 +26,7 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
     Register upper_bits, lower_bits;
+    int32_t sbrk_pages_offset;
     uint32_t addr_to_get, offset, buffer_len;
     wchar_t char_to_print, *str_input_buffer;
     switch (code) {
@@ -145,6 +146,11 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
 
         case 19: // print integer in $g8, $g9 as unsigned int
             printf("%u\n", printable.i);
+            break;
+        
+        case 20: // "sbrk" syscall, increases heap into stack by $g8, $g9 pages (signed)
+            sbrk_pages_offset = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
+            change_heap_size(sbrk_pages_offset, process);
             break;
         
         default:

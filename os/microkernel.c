@@ -45,7 +45,7 @@ void init_MMU() {
  */
 void print_MMU(int num_pages) {
     int pages_to_print = num_pages > 0 ? num_pages : NUM_PAGES;
-    printf("Logical\tPhysical\tType\tProcess\n");
+    printf("Logical\t\tPhysical\tType\tProcess\n");
     for (int i = 0; i < pages_to_print; i++) {
         if (MMU[i].allocated == 0)
             printf("0x%04X: NOT ALLOCATED\n", i);
@@ -108,8 +108,6 @@ uint32_t get_physical_from_logical_addr(uint16_t process_id, uint32_t logical_ad
 /**
  * @brief Creates a new HeapBlock with the given parameters, a status of 1, and NULL left and right 
  * children.
- * 
- * PROBABLY SHOULDN'T BE RETURNED!
  * 
  * @param start_addr The address of the first byte of the block
  * @param size The size in bytes of the block
@@ -399,4 +397,40 @@ void print_malloc_tree(HeapBlock root, int depth) {
         print_malloc_tree( *root.left_child, depth + 1);
     if (root.right_child != NULL)
         print_malloc_tree( *root.right_child, depth + 1);
+}
+
+
+void change_heap_size(int32_t offset, Process* process) {
+    if (offset == 0)
+        return;
+    
+    MMUEntry* lowest_stack = NULL;
+    MMUEntry* highest_heap = NULL;
+    for (int i = 0; i < NUM_PAGES; i++) {
+        if (MMU[i].process_id == process->id) {
+            if (lowest_stack == NULL && MMU[i].type == STACK_PAGE)
+                lowest_stack = &MMU[i];
+            else if (highest_heap == NULL && MMU[i].type == HEAP_PAGE)
+                highest_heap = &MMU[i];
+            else if (MMU[i].type == STACK_PAGE && MMU[i].logical_start_addr < lowest_stack->logical_start_addr)
+                lowest_stack = &MMU[i];
+            else if (MMU[i].type == HEAP_PAGE && MMU[i].logical_start_addr > highest_heap->logical_start_addr)
+                highest_heap = &MMU[i];
+        }
+    }
+
+    if (lowest_stack == NULL && highest_heap == NULL) {
+        printf("Failed to adjust stack size\n");
+        exit(50);
+    }
+
+    if (offset > 0) {
+        lowest_stack->type = HEAP_PAGE;
+        offset--;
+    } else {
+        highest_heap->type = STACK_PAGE;
+        offset++;
+    }
+    
+    change_heap_size(offset, process);
 }

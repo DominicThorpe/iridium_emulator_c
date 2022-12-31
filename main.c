@@ -51,9 +51,10 @@ int main(int argc, char *argv[]) {
     Process* process_a = new_process(0, commands_a, prog_len_a, ram);
 
     print_processes();
+    change_heap_size(-3, process_a);
     execute_scheduled_processes(ram, register_file);
-    print_malloc_tree(*process_a->heap_root, 0);
     print_registers(register_file);
+    print_MMU(263);
     
     return 0;
 }

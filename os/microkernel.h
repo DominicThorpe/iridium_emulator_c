@@ -57,14 +57,18 @@ typedef struct Process {
 
 void init_processes();
 void init_MMU();
-void print_MMU(int num_pages);
+
 Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ram);
-MMUEntry* request_new_page(Process* process, char type);
 void execute_scheduled_processes(RAM* ram, Register* registers);
-void print_processes();
-void print_malloc_tree(HeapBlock root, int depth);
+
+MMUEntry* request_new_page(Process* process, char type);
 uint32_t allocate_memory(HeapBlock* root, uint32_t size);
 void free_memory(HeapBlock* root, long address);
+void change_heap_size(int32_t offset, Process* process);
+
+void print_malloc_tree(HeapBlock root, int depth);
+void print_MMU(int num_pages);
+void print_processes();
 
 
 #endif
