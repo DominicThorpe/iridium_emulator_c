@@ -239,7 +239,7 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
         if (command == 0x0000 || command == 0xFFFF)
             return -1;
 
-        execute_command(command, ram, registers);
+        execute_command(command, ram, registers, process);
         new_count.word_32 = get_register(15, registers).word_32 + 1;
         update_register(15, new_count, registers);
 
@@ -284,7 +284,10 @@ void execute_scheduled_processes(RAM* ram, Register* registers) {
  * @param size The size of the memory to allocate
  * @return Returns the address of the allocated block if one is found, and -1 if one could not be found. 
  */
-long allocate_memory(HeapBlock* root, uint32_t size) {
+uint32_t allocate_memory(HeapBlock* root, uint32_t size) {
+    if (size == 0)
+        return -1;
+        
     // if memory is taken, do nothing
     if (root == NULL || size > root->size || root->status == 0)
         return -1;
@@ -301,7 +304,7 @@ long allocate_memory(HeapBlock* root, uint32_t size) {
     }
     
     // if memory is free, but too large, create new node and go further down the tree
-    else if (root->size / 2 >= size) {
+    else if (root->size / 2 >= size && root->size != 0) {
         root->status = 2;
         root->left_child = new_heap_block(root->start_addr, root->size / 2);
         root->right_child = new_heap_block(root->start_addr + root->size / 2, root->size / 2);

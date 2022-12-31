@@ -1,8 +1,10 @@
-#include "interrupt_handler.h"
-#include "../registers.h"
-#include "../internal_memory.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include "interrupt_handler.h"
+#include "microkernel.h"
+#include "../registers.h"
+#include "../internal_memory.h"
 
 
 /*
@@ -13,7 +15,7 @@ will come eventually.
 When reading or printing, the `printable` union should be used for integers and floats. This 
 ensures they can be represented and printed properly.
 */
-void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
+void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, Process* process) {
     // represent values that can be read or printed
     union {
         int i;
@@ -24,7 +26,7 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
     Register upper_bits, lower_bits;
-    unsigned int addr_to_get, offset, buffer_len;
+    uint32_t addr_to_get, offset, buffer_len;
     wchar_t char_to_print, *str_input_buffer;
     switch (code) {
         case 1:  // print signed int in $g8, $g9
@@ -94,7 +96,15 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram) {
             free(str_input_buffer);
             break;
 
-        case 7:  // allocate heap memory, length in bytes of len at $g8, $g9
+        case 7: // allocate heap memory, length in bytes of len at $g8, $g9
+            addr_to_get = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
+            addr_to_get = allocate_memory(process->heap_root, addr_to_get);
+            upper_bits.word_16 = (addr_to_get & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = addr_to_get & 0x0000FFFF;
+            update_register(9, upper_bits, registers);
+            update_register(10, lower_bits, registers);
+            break;
+
         case 8:  // open file with name in str starting at addr in $g9, in mode in $g8
         case 9:  // read block of data from opened file into addr starting at $g9, offset block by $g8
         case 10: // write byte in $g8 to file to block in $ua, byte index in $g9

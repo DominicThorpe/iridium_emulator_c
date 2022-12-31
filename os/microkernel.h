@@ -63,7 +63,7 @@ MMUEntry* request_new_page(Process* process, char type);
 void execute_scheduled_processes(RAM* ram, Register* registers);
 void print_processes();
 void print_malloc_tree(HeapBlock root, int depth);
-long allocate_memory(HeapBlock* root, uint32_t size);
+uint32_t allocate_memory(HeapBlock* root, uint32_t size);
 void free_memory(HeapBlock* root, long address);
 
 

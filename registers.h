@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define GET_REG_VAL(index) index < 12 ? get_register(index, registers).word_16 : get_register(index, registers).word_32
+
 typedef union Register {
     uint16_t word_16;
     uint32_t word_32;

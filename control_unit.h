@@ -3,8 +3,9 @@
 
 #include "internal_memory.h"
 #include "registers.h"
+#include "os/microkernel.h"
 
-void execute_command(short command, RAM* ram, Register* registers);
+void execute_command(short command, RAM* ram, Register* registers, Process* process);
 
 #endif
 

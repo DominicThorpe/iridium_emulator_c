@@ -43,20 +43,16 @@ int main(int argc, char *argv[]) {
     RAM* ram = init_RAM(1024);
 
     // read program data into RAM
-    long prog_len_a, prog_len_b;
+    long prog_len_a;
     uint16_t* commands_a = read_commands(argv[1], &prog_len_a);
-    uint16_t* commands_b = read_commands(argv[2], &prog_len_b);
     
     init_MMU();
     init_processes();
     Process* process_a = new_process(0, commands_a, prog_len_a, ram);
-    Process* process_b = new_process(1, commands_b, prog_len_b, ram);
-
-    allocate_memory(process_a->heap_root, 0x001000);
-    print_malloc_tree(*(process_a->heap_root), 0);
 
     print_processes();
     execute_scheduled_processes(ram, register_file);
+    print_malloc_tree(*process_a->heap_root, 0);
     print_registers(register_file);
     
     return 0;
