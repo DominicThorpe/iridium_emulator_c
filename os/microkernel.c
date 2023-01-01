@@ -138,7 +138,7 @@ Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ra
 
     Process* process = malloc(sizeof(Process));
     process->id = id;
-    process->pc = 0;
+    process->started = 0;
     process->max_addr = 0;
     process->flags.carry = 0;
     process->flags.negative = 0;
@@ -196,15 +196,87 @@ Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ra
 
 
 void print_processes() {
-    printf("ID\tPC\t\tMax Addr\tHeap Start\n");
+    printf("ID\tStarted\t\tMax Addr\tHeap Start\tHeap Phys Start\n");
     for (int i = 0; i < max_processes; i++) {
         if (processes[i] == NULL)
             continue;
 
-        printf("%d\t0x%08X\t0x%08X\t0x%08X\n", 
-            processes[i]->id, processes[i]->pc, processes[i]->max_addr, 
-            processes[i]->heap_root->start_addr
+        printf("%d\t0x%08X\t0x%08X\t0x%08X\t0x%08X\n", 
+            processes[i]->id, processes[i]->started, processes[i]->max_addr, 
+            processes[i]->heap_root->start_addr, 
+            get_physical_from_logical_addr(processes[i]->id, processes[i]->heap_root->size)
         );
+    }
+}
+
+
+/**
+ * @brief Saves the current state of the registers to the start of the stack (first 19 words)
+ * 
+ * @attention Should be taken into account by future programmers and compilers
+ * 
+ * @param process The process being saved
+ * @param registers The registers file
+ * @param ram The system RAM
+ */
+void save_registers(Process* process, Register* registers, RAM* ram) {
+    for (int i = 1; i < 12; i++) {
+        add_to_ram(ram, get_physical_from_logical_addr(process->id, process->max_addr - i), 
+            GET_REG_VAL(i)
+        );
+    }
+
+    int reg = 12;
+    for (int i = 12; i < 19; i += 2) {
+        add_to_ram(ram, get_physical_from_logical_addr(process->id, process->max_addr - i), 
+            (GET_REG_VAL(reg) & 0xFFFF0000) >> 16);
+        add_to_ram(ram, get_physical_from_logical_addr(process->id, process->max_addr - i + 1), 
+            GET_REG_VAL(reg) & 0x0000FFFF);
+
+        reg++;
+    }
+}
+
+
+/**
+ * @brief Loads registers from the start of the process's stack when reloaded after process scheduler
+ * returns to it.
+ * 
+ * @param process The process being executed
+ * @param registers The system registers
+ * @param ram The system RAM
+ */
+void load_registers(Process* process, Register* registers, RAM* ram) {
+    Register new_val;
+    for (int i = 1; i < 12; i++) {
+        new_val.word_16 = get_from_ram(ram,
+            get_physical_from_logical_addr(process->id, process->max_addr - i));
+        update_register(i, new_val, registers);
+    }
+
+    int reg = 12;
+    for (int i = 12; i < 19; i += 2) {
+        new_val.word_32 = get_from_ram(ram,
+            get_physical_from_logical_addr(process->id, process->max_addr - i)) << 16;
+        new_val.word_32 |= get_from_ram(ram,
+            get_physical_from_logical_addr(process->id, process->max_addr - i + 1));
+        update_register(reg, new_val, registers);
+
+        reg++;
+    }
+}
+
+
+/**
+ * @brief Sets the value in all registers to 0
+ * 
+ * @param registers The system registers
+ */
+void reset_registers(Register* registers) {
+    for (int i = 0; i < 16; i++) {
+        Register new_reg;
+        new_reg.word_32 = 0;
+        update_register(i, new_reg, registers);
     }
 }
 
@@ -220,9 +292,13 @@ void print_processes() {
  * @return The value in the program counter at the end of the burst, or -1 if the process completes
  */
 uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, uint32_t burst_len) {
-    Register new_pc;
-    new_pc.word_32 = process->pc;
-    update_register(15, new_pc, registers);
+    if (process->started != 0)
+        load_registers(process, registers, ram);
+    else {
+        reset_registers(registers);
+        process->started = 1;
+    }
+
     alu_flags.carry = process->flags.carry;
     alu_flags.negative = process->flags.negative;
     alu_flags.zero = process->flags.zero;
@@ -244,10 +320,10 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
         instrs_executed++;
     }
 
-    process->pc = get_register(15, registers).word_32;
     process->flags.carry = alu_flags.carry;
     process->flags.negative = alu_flags.negative;
     process->flags.zero = alu_flags.zero;
+    save_registers(process, registers, ram);
 
     return get_register(15, registers).word_32;
 }
@@ -264,6 +340,9 @@ void execute_scheduled_processes(RAM* ram, Register* registers) {
 
             uint32_t result = execute_process_burst(ram, registers, processes[i], BURST_LEN);
             if (result == -1) {
+                print_registers(registers);
+                printf("\n\n");
+                
                 free(processes[i]);
                 processes[i] = NULL;
                 num_active_processes--;

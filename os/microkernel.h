@@ -48,7 +48,7 @@ typedef struct MMUEntry {
  */
 typedef struct Process {
     uint8_t id;
-    uint32_t pc;
+    uint8_t started; // 0 if process not ever run, otherwise 1
     uint32_t max_addr; // the highest valid address
     HeapBlock* heap_root;
     struct ALU_flags flags;
