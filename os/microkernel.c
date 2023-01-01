@@ -400,6 +400,13 @@ void print_malloc_tree(HeapBlock root, int depth) {
 }
 
 
+/**
+ * @brief Adjusts the breakpoint between the process stack and heap by the offset. Note that increasing 
+ * the heap shrinks the stack, and vice versa.
+ * 
+ * @param offset The number of pages to add to the heap; negative value shrinks the heap.
+ * @param process The process to adjust
+ */
 void change_heap_size(int32_t offset, Process* process) {
     if (offset == 0)
         return;

@@ -16,11 +16,11 @@ There is also support for a number of I/O devices. We plan to support an SD Card
 
 ### Memory Map
 
-The diagram below shows how memory is laid out in the system. Because we have an address space of 4GB, we know we can have *up to* 4GB of RAM/ROM, but we don't know how much we will actually have. When we implement a microprocessor version of this system, this amount will be much less than 1GB.
+Because we have an address space of 4GB, we know we can have *up to* 4GB of RAM/ROM, but we don't know how much we will actually have. When we implement a microprocessor version of this system, this amount will be much less than 1GB.
 
-![Diagram of memory](assets/memory_map.png)
+Each process has access to 1Mb of stack, and another 1Mb of heap memory, with the heap starting at the bottom and the stack at the top. The high water mark of the heap can be adjusted via syscall 19 (aka *sbrk*). The code for a process goes at the start of process memory, followed by non-text data, and text data has its own section, followed by the heap and stack.
 
-The program counter will always start at 0x0000 0000, and that is where the 1st instruction of the bootloader will be located. The bootloader will first go into the harddrive and locate a file called *"iridium_OS.ird"*, and load the entirety of the contents into RAM, starting at 0x0000 2000, then it will move the program counter to there and start executing the operating system.
+Memory is allocated on the stack using the *friend system*, wherein the heap is organised into a binary tree with each level being a certain block size. When allocating memory, the tree is traversed to find a block of the right size. If one cannot be found, a large, free block is split into 2 recursively until a best-fit is found. Find out more about this technique [here](https://www.geeksforgeeks.org/buddy-system-memory-allocation-technique/).
 
 
 ## Current Progress
@@ -38,8 +38,8 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
     - [x] Processing RRI-type ALU instructions (ADDI, SUBI)
     - [x] Processing RII-type general instructions (MOVLI, MOVUI)
     - [x] Processing ORR-type ALU instructions (ADDC, SUBC)
-    - [ ] Processing ORI-type system instructions (must wait for OS)
-    - [ ] Program halting (must wait for OS)
+    - [x] Processing ORI-type system instructions 
+    - [x] Program halting (HALT)
 
   - Flow-Control
     - [x] Unconditional branching (JUMP, JAL)
@@ -48,8 +48,20 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
 
   - Program Loading
     - Can load instructions from a specified file
-      - [x] Into RAM
-      - [ ] Bootloader
-      - [ ] Into hard drive
-    - [ ] Can load instructions from ROM
-    - [ ] Can load files from hard-drive
+      - [x] Into RAM from external file
+      - [ ] Into RAM from hard drive image
+
+  - Operating System
+    - Microkernel
+      - [x] Paging
+      - [x] Memory Management
+      - [ ] Process Scheduling
+
+    - [ ] Interrupt Handler
+    - [ ] System UI
+    - [ ] Inter-Process Communication
+  
+  - I/O Support
+    - [ ] Keyboard
+    - [ ] Screen
+    - [ ] Sound
