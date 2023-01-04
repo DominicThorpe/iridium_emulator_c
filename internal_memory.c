@@ -22,6 +22,7 @@ corresponding linked list. If the address is not in the hashmap, it will return 
 
 
 static long ram_hash_capacity = -1;
+static short periodic_interrupt_enabled = TRUE;
 static short ram_is_initialised = FALSE;
 
 
@@ -37,8 +38,7 @@ RAM* init_RAM(long hash_capacity) {
     RAMKeyValuePair** RAM_initial_state = malloc(sizeof(RAMKeyValuePair) * hash_capacity);
     for (unsigned long i = 0; i < hash_capacity; i++) { // initialise all buckets to null
         RAM_initial_state[i] = NULL; 
-    }
-    
+    } 
 
     RAM* ram = malloc(sizeof(RAM));
     ram->buckets = RAM_initial_state;
@@ -136,6 +136,16 @@ void print_RAM(RAM* ram) {
 
         printf("\n");
     }
+}
+
+
+void toggle_periodic_interrupts() {
+    periodic_interrupt_enabled = !periodic_interrupt_enabled;
+}
+
+
+short get_periodic_interrupts_enabled() {
+    return periodic_interrupt_enabled;
 }
 
 

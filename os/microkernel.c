@@ -285,6 +285,9 @@ void reset_registers(Register* registers) {
  * @brief Takes a process, RAM, and registers, then executes the process for a number of instructions
  * equal to the burst length, round-robin style.
  * 
+ * @note Does not move on to next process if atom flag is set in the control unit, waits until it is
+ * disabled.
+ * 
  * @param ram The system RAM
  * @param register The CPU registers
  * @param process The process being executed
@@ -307,7 +310,7 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
     Register new_count;
     uint32_t address;
     uint32_t instrs_executed = 0;
-    while (instrs_executed < burst_len) {
+    while (1) {
         address = get_physical_from_logical_addr(process->id, get_register(15, registers).word_32);
         command = get_from_ram(ram, address);
         if (command == 0x0000 || command == 0xFFFF)
@@ -318,6 +321,8 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
         update_register(15, new_count, registers);
 
         instrs_executed++;
+        if (instrs_executed > burst_len && get_periodic_interrupts_enabled() == 1)
+            break;
     }
 
     process->flags.carry = alu_flags.carry;
@@ -346,6 +351,9 @@ void execute_scheduled_processes(RAM* ram, Register* registers) {
                 free(processes[i]);
                 processes[i] = NULL;
                 num_active_processes--;
+
+                if (get_periodic_interrupts_enabled() == 0)
+                    toggle_periodic_interrupts();
             }
         }
     }

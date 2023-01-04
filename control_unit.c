@@ -117,6 +117,10 @@ void execute_command(short command, RAM* ram, Register* registers, Process* proc
                 handle_interrupt_code(code, registers, ram, process);
                 break;
             
+            case 0xD: // ATOM
+                toggle_periodic_interrupts();
+                break;
+            
             case 0xF: // HALT
                 break;
             
