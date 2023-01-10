@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include "interrupt_handler.h"
 #include "microkernel.h"
+#include "filesystem/fat_functions.h"
+#include "filesystem/file_dt.h"
 #include "../registers.h"
 #include "../internal_memory.h"
 
@@ -26,9 +29,15 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
     Register upper_bits, lower_bits;
-    int32_t sbrk_pages_offset;
-    uint32_t addr_to_get, offset, buffer_len;
-    wchar_t char_to_print, *str_input_buffer;
+    int32_t sbrk_pages_offset, int_buffer;
+    uint32_t addr_buffer, offset, buffer_len;
+    wchar_t char_buffer, *str_buffer;
+    char* ascii_buffer;
+    FATPtr* file_buffer;
+
+    Filedir* root_dirs;
+    Metadata* metadata;
+
     switch (code) {
         case 1:  // print signed int in $g8, $g9
             printf("%d\n", printable.i);
@@ -39,11 +48,11 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             break;
 
         case 3:  // print str starting at addr in $ua, $g9, ending at next 0x0000 in RAM
-            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            addr_buffer = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
             offset = 0;
-            while (get_from_ram(ram, addr_to_get + offset) != 0) {
-                char_to_print = get_from_ram(ram, addr_to_get + offset);
-                printf("%c", char_to_print);
+            while (get_from_ram(ram, addr_buffer + offset) != 0) {
+                char_buffer = get_from_ram(ram, addr_buffer + offset);
+                printf("%c", char_buffer);
                 offset++;
             }
 
@@ -74,39 +83,74 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         case 6:  // read str into addr in $ua, $g9 of length in $g8
             // allocate size of buffer of characters to read
             buffer_len = get_register(9, registers).word_16;
-            str_input_buffer = malloc(buffer_len * sizeof(wchar_t)); 
+            str_buffer = malloc(buffer_len * sizeof(wchar_t)); 
 
             // flush standard input and then get the string from the user
             fflush(stdin);
-            fgetws(str_input_buffer, buffer_len, stdin);
+            fgetws(str_buffer, buffer_len, stdin);
 
             // remove final line feed
             for (unsigned int  i = buffer_len - 1; i > 0; i--) {
-                if (str_input_buffer[i] == 0xA) {
-                    str_input_buffer[i] = 0;
+                if (str_buffer[i] == 0xA) {
+                    str_buffer[i] = 0;
                     break;
                 }
             }
 
             // add to ram
-            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            addr_buffer = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
             for (unsigned int i = 0; i < buffer_len; i++) {
-                add_to_ram(ram, addr_to_get + i, str_input_buffer[i]);
+                add_to_ram(ram, addr_buffer + i, str_buffer[i]);
             }
 
-            free(str_input_buffer);
+            free(str_buffer);
             break;
 
         case 7: // allocate heap memory, length in bytes of len at $g8, $g9
-            addr_to_get = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
-            addr_to_get = allocate_memory(process->heap_root, addr_to_get);
-            upper_bits.word_16 = (addr_to_get & 0xFFFF0000) >> 16;
-            lower_bits.word_16 = addr_to_get & 0x0000FFFF;
+            addr_buffer = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
+            addr_buffer = allocate_memory(process->heap_root, addr_buffer);
+            upper_bits.word_16 = (addr_buffer & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = addr_buffer & 0x0000FFFF;
             update_register(9, upper_bits, registers);
             update_register(10, lower_bits, registers);
             break;
 
-        case 8:  // open file with name in str starting at addr in $g9, in mode in $g8
+        case 8:  // open file with name in str starting at addr in $g8, $g9
+            ascii_buffer = malloc(128 * sizeof(wchar_t));
+            addr_buffer = get_physical_from_logical_addr(process->id,
+                (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16);
+
+            int index = 0;
+            while (1) {
+                ascii_buffer[index] = get_from_ram(ram, addr_buffer + index) & 0x0000FFFF;
+                if (ascii_buffer[index] == '\0' || index >= 127)
+                    break;
+
+                index++;
+            }
+            ascii_buffer[index] = '\0';
+            
+            // open the file
+            FILE* image = fopen("os/filesystem/harddrive.img", "rb");
+            if (image == NULL) {
+                printf("Could not open hard drive - image could not be found!\n");
+                return;
+            }
+            
+            metadata = malloc(sizeof(Metadata));
+            read_sys_metadata(image, metadata);
+            
+            scan_FAT_into_RAM(image, metadata);
+
+            fseek(image, 0x8800, SEEK_SET);
+            file_buffer = f_open(image, ascii_buffer);
+
+            upper_bits.word_16 = (ftell(file_buffer->fileptr) & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = ftell(file_buffer->fileptr) & 0x0000FFFF;
+            update_register(9, lower_bits, registers);
+            update_register(10, upper_bits, registers);
+            break;
+
         case 9:  // read block of data from opened file into addr starting at $g9, offset block by $g8
         case 10: // write byte in $g8 to file to block in $ua, byte index in $g9
         case 11: // close file

@@ -65,6 +65,7 @@ MMUEntry* request_new_page(Process* process, char type);
 uint32_t allocate_memory(HeapBlock* root, uint32_t size);
 void free_memory(HeapBlock* root, long address);
 void change_heap_size(int32_t offset, Process* process);
+uint32_t get_physical_from_logical_addr(uint16_t process_id, uint32_t logical_addr);
 
 void print_malloc_tree(HeapBlock root, int depth);
 void print_MMU(int num_pages);
