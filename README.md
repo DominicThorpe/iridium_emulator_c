@@ -29,8 +29,8 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
   - Memory
     - [x] Array-based implementation of the registers, including 16- and 32-bit registers  
     - [x] Chained hashmap implementation of RAM
-    - [ ] File-based implementation of ROM
     - [ ] File-based implementation of SD hard drive
+    - [ ] File-based implementation of ROM
 
   - Processing
     - [x] Processing RRR-type ALU instructions (ADD, SUB, SLL, SRL, SRA, NAND, OR)
@@ -55,8 +55,9 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
     - Microkernel
       - [x] Paging
       - [x] Memory Management
-      - [ ] Process Scheduling
+      - [x] Process Scheduling
 
+    - [ ] Filesystwm
     - [ ] Interrupt Handler
     - [ ] System UI
     - [ ] Inter-Process Communication

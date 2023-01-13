@@ -10,6 +10,9 @@
 #define TRUE  1
 
 
+uint16_t* FAT;
+
+
 /**
  * @brief Get the start address of the given cluster
  * 

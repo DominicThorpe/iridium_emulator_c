@@ -10,6 +10,76 @@
 #include "../internal_memory.h"
 
 
+/**
+ * @brief Opens a file with the address in the registers $g8 and $g9, and returns
+ * a FATPtr* to the start of that file, or NULL if the file could not be opened
+ * for any reason.
+ * 
+ * @param process The process opening the file
+ * @param registers The system registers
+ * @param ram The system RAM
+ * @return A FATPtr* to the start of the file, or NULL if fails to open
+ */
+FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
+    char* ascii_buffer = malloc(128 * sizeof(wchar_t));
+    uint32_t addr_buffer = get_physical_from_logical_addr(process->id,
+                            (get_register(10, registers).word_16 << 16) | 
+                             get_register(9, registers).word_16);
+
+    int index = 0;
+    while (1) {
+        ascii_buffer[index] = get_from_ram(ram, addr_buffer + index) & 0x0000FFFF;
+        if (ascii_buffer[index] == '\0' || index >= 127)
+            break;
+
+        index++;
+    }
+    ascii_buffer[index] = '\0';
+    
+    // open the file
+    FILE* image = fopen("os/filesystem/harddrive.img", "rb");
+    if (image == NULL) {
+        printf("Could not open hard drive - image could not be found!\n");
+        return NULL;
+    }
+    
+    Metadata* metadata = malloc(sizeof(Metadata));
+    read_sys_metadata(image, metadata);    
+    scan_FAT_into_RAM(image, metadata);
+    free(metadata);
+
+    fseek(image, 0x8800, SEEK_SET);
+    FATPtr* fileptr = f_open(image, ascii_buffer);
+    free(ascii_buffer);
+
+    return fileptr;
+}
+
+
+/**
+ * @brief Generates a 32-bit file descriptor with bits 0:11 being for the currently pointed
+ * to cluster, 12:23 for the byte, 24 is 1 if read mode is on, 25 is for if write mode is
+ * on, and 26:31 is for the file ID.
+ * 
+ * @param cluster The cluster being pointed to
+ * @param offset The byte in the cluster being pointed to
+ * @param read 1 if in 'r' or 'r+' mode, otherwise 0
+ * @param write 1 if in 'w' or 'w+' mode, otherwise 0
+ * @param id ID of the file
+ * @return The 32 bit file descriptor
+ */
+uint32_t generate_file_descriptor(int cluster, int offset, int read, int write, int id) {
+    uint32_t descriptor = 0;
+    descriptor |= (id & 0x003F) << 26;
+    descriptor |= (read & 0x0001) << 25;
+    descriptor |= (write & 0x0001) << 24;
+    descriptor |= (offset & 0x0FFF) << 12;
+    descriptor |= cluster & 0x0FFF;
+
+    return descriptor;
+}
+
+
 /*
 Takes a code relating to an interrupt code to handle and acts appropriately. Currently, only 
 program interrupts (a.k.a "syscalls") are handled, although system and external interrupts
@@ -30,14 +100,9 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
 
     Register upper_bits, lower_bits;
     int32_t sbrk_pages_offset, int_buffer;
-    uint32_t addr_buffer, offset, buffer_len;
+    uint32_t addr_buffer, offset, buffer_len, file_descriptor;
     wchar_t char_buffer, *str_buffer;
-    char* ascii_buffer;
-    FATPtr* file_buffer;
-
     Filedir* root_dirs;
-    Metadata* metadata;
-
     switch (code) {
         case 1:  // print signed int in $g8, $g9
             printf("%d\n", printable.i);
@@ -115,45 +180,19 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             update_register(10, lower_bits, registers);
             break;
 
-        case 8:  // open file with name in str starting at addr in $g8, $g9
-            ascii_buffer = malloc(128 * sizeof(wchar_t));
-            addr_buffer = get_physical_from_logical_addr(process->id,
-                (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16);
+        case 8:  // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
+            addr_buffer = open_file_routine(process, registers, ram)->start_sector;
+            file_descriptor = generate_file_descriptor(addr_buffer, 0, 0, 0, 0);
 
-            int index = 0;
-            while (1) {
-                ascii_buffer[index] = get_from_ram(ram, addr_buffer + index) & 0x0000FFFF;
-                if (ascii_buffer[index] == '\0' || index >= 127)
-                    break;
-
-                index++;
-            }
-            ascii_buffer[index] = '\0';
-            
-            // open the file
-            FILE* image = fopen("os/filesystem/harddrive.img", "rb");
-            if (image == NULL) {
-                printf("Could not open hard drive - image could not be found!\n");
-                return;
-            }
-            
-            metadata = malloc(sizeof(Metadata));
-            read_sys_metadata(image, metadata);
-            
-            scan_FAT_into_RAM(image, metadata);
-
-            fseek(image, 0x8800, SEEK_SET);
-            file_buffer = f_open(image, ascii_buffer);
-
-            upper_bits.word_16 = (ftell(file_buffer->fileptr) & 0xFFFF0000) >> 16;
-            lower_bits.word_16 = ftell(file_buffer->fileptr) & 0x0000FFFF;
+            lower_bits.word_16 = file_descriptor & 0x0000FFFF;
+            upper_bits.word_16 = (file_descriptor & 0xFFFF0000) >> 16;
             update_register(9, lower_bits, registers);
             update_register(10, upper_bits, registers);
             break;
 
-        case 9:  // read block of data from opened file into addr starting at $g9, offset block by $g8
-        case 10: // write byte in $g8 to file to block in $ua, byte index in $g9
-        case 11: // close file
+        case 9: // close file
+        case 10: // read $g7 bytes of data from HD pointer in $g8, $g9
+        case 11: // write byte in $g7 to file pointer in $g8, $g9 (writes to buffer, OUT 0 writes to disk)
         case 12: // MIDI out, MIDI code in $g9
         case 13: // get system time into $g8 and $g9
         case 14: // sleep for milliseconds in $g8, $g9
@@ -167,9 +206,9 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             break;
 
         case 16: // get random integer into $g9
-            printable.i= rand();
-            upper_bits.word_16 = (printable.i>> 16) & 0xFFFF;
-            lower_bits.word_16 = printable.i& 0xFFFF;
+            printable.i = rand();
+            upper_bits.word_16 = (printable.i >> 16) & 0xFFFF;
+            lower_bits.word_16 = printable.i & 0xFFFF;
             
             update_register(9, upper_bits, registers);
             update_register(10, lower_bits, registers);
