@@ -70,6 +70,6 @@ void change_heap_size(int32_t offset, Process* process);
 void print_malloc_tree(HeapBlock root, int depth);
 void print_MMU(int num_pages);
 void print_processes();
-
+uint32_t get_physical_from_logical_addr(uint16_t process_id, uint32_t logical_addr);
 
 #endif

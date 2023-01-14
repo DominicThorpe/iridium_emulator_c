@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include "interrupt_handler.h"
 #include "microkernel.h"
+#include "filesystem/fat_functions.h"
 #include "../registers.h"
 #include "../internal_memory.h"
 

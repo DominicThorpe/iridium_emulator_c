@@ -21,13 +21,13 @@ typedef struct fatptr {
     int current_pos;
 } FATPtr;
 
-
-FILE* init_harddrive(char* image_path);
+FILE* init_harddrive(Metadata* metadata);
 FATPtr* f_open(FILE* image, char* dir);
 void f_seek(FATPtr* fileptr, long offset, short whence);
 void f_read(FATPtr* fileptr, long bytes, char* buffer);
 void f_close(FATPtr* fileptr);
 Filedir* iterate_directory(FILE* image, int addr, int* num_dirs);
 long get_addr_from_cluster(long cluster_num, Metadata* metadata);
-void scan_FAT_into_RAM(FILE* image, Metadata* metadata);
 
+
+#endif
