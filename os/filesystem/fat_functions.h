@@ -31,5 +31,3 @@ Filedir* iterate_directory(FILE* image, int addr, int* num_dirs);
 long get_addr_from_cluster(long cluster_num, Metadata* metadata);
 void scan_FAT_into_RAM(FILE* image, Metadata* metadata);
 
-
-#endif

@@ -54,11 +54,8 @@ int main(int argc, char *argv[]) {
     Process* process_a = new_process(0, commands_a, prog_len_a, ram);
 
     print_processes();
-    print_RAM(ram);
-    execute_scheduled_processes(ram, register_file, hd_img);
+    execute_scheduled_processes(ram, register_file);
     print_registers(register_file);
-
-    print_open_files();
     
     return 0;
 }

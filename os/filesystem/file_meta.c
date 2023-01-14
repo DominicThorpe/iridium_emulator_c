@@ -159,3 +159,4 @@ void read_long_filename(FILE* image, char* long_name) {
     memmove(long_name + strlen(name), long_name, strlen(long_name) + 1);
     memcpy(long_name, name, strlen(name));
 }
+

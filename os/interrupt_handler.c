@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <string.h>
 #include "interrupt_handler.h"
 #include "microkernel.h"
-#include "filesystem/fat_functions.h"
-#include "filesystem/file_dt.h"
 #include "../registers.h"
 #include "../internal_memory.h"
 
@@ -115,10 +112,9 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
     printable.i = (get_register(9, registers).word_16 << 16) | get_register(10, registers).word_16;
 
     Register upper_bits, lower_bits;
-    int32_t sbrk_pages_offset, int_buffer;
-    uint32_t addr_buffer, offset, buffer_len, file_descriptor;
-    wchar_t char_buffer, *str_buffer;
-    Filedir* root_dirs;
+    int32_t sbrk_pages_offset;
+    uint32_t addr_to_get, offset, buffer_len;
+    wchar_t char_to_print, *str_input_buffer;
     switch (code) {
         case 1:  // print signed int in $g8, $g9
             printf("%d\n", printable.i);
@@ -129,11 +125,11 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             break;
 
         case 3:  // print str starting at addr in $ua, $g9, ending at next 0x0000 in RAM
-            addr_buffer = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
             offset = 0;
-            while (get_from_ram(ram, addr_buffer + offset) != 0) {
-                char_buffer = get_from_ram(ram, addr_buffer + offset);
-                printf("%c", char_buffer);
+            while (get_from_ram(ram, addr_to_get + offset) != 0) {
+                char_to_print = get_from_ram(ram, addr_to_get + offset);
+                printf("%c", char_to_print);
                 offset++;
             }
 
@@ -164,89 +160,43 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         case 6:  // read str into addr in $ua, $g9 of length in $g8
             // allocate size of buffer of characters to read
             buffer_len = get_register(9, registers).word_16;
-            str_buffer = malloc(buffer_len * sizeof(wchar_t)); 
+            str_input_buffer = malloc(buffer_len * sizeof(wchar_t)); 
 
             // flush standard input and then get the string from the user
             fflush(stdin);
-            fgetws(str_buffer, buffer_len, stdin);
+            fgetws(str_input_buffer, buffer_len, stdin);
 
             // remove final line feed
             for (unsigned int  i = buffer_len - 1; i > 0; i--) {
-                if (str_buffer[i] == 0xA) {
-                    str_buffer[i] = 0;
+                if (str_input_buffer[i] == 0xA) {
+                    str_input_buffer[i] = 0;
                     break;
                 }
             }
 
             // add to ram
-            addr_buffer = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
+            addr_to_get = (get_register(11, registers).word_16 << 16) | get_register(10, registers).word_16;
             for (unsigned int i = 0; i < buffer_len; i++) {
-                add_to_ram(ram, addr_buffer + i, str_buffer[i]);
+                add_to_ram(ram, addr_to_get + i, str_input_buffer[i]);
             }
 
-            free(str_buffer);
+            free(str_input_buffer);
             break;
 
         case 7: // allocate heap memory, length in bytes of len at $g8, $g9
-            addr_buffer = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
-            addr_buffer = allocate_memory(process->heap_root, addr_buffer);
-            upper_bits.word_16 = (addr_buffer & 0xFFFF0000) >> 16;
-            lower_bits.word_16 = addr_buffer & 0x0000FFFF;
+            addr_to_get = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
+            addr_to_get = allocate_memory(process->heap_root, addr_to_get);
+            upper_bits.word_16 = (addr_to_get & 0xFFFF0000) >> 16;
+            lower_bits.word_16 = addr_to_get & 0x0000FFFF;
             update_register(9, upper_bits, registers);
             update_register(10, lower_bits, registers);
             break;
 
-        // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
-        // if $g7 = 0, then file may not be read or written, if 1, it is write-only, if 2, it is read-only, if
-        // 3, then it is read-write enabled.
-        case 8: {
-            // determine a vaid file ID or exit if one cannot be found
-            uint8_t id = 0xFF;
-            int found = 0;
-            for (int i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
-                if (open_files[i] == 0) {
-                    id = i;
-                    found = 1;
-                    break;
-                } 
-            }
-
-            if (found = 0)
-                break;
-            printf("ID: %d\n", id);
-
-            // generate file descriptor and put into registers
-            FATPtr* file = open_file_routine(hd_img, process, registers, ram);
-            int flags = get_register(8, registers).word_16;
-            if (file->file_context->DIR_Attr & 0b011000 != 0) // if a volume or directory, it is no-read, no-write
-                file_descriptor = generate_file_descriptor(file->start_sector, 0, 0, 0, id);
-            else
-                file_descriptor = generate_file_descriptor(file->start_sector, 0, flags & 0b10, flags & 0b01, id);
-            printf("descriptor: 0x%08X\n", file_descriptor);
-
-            lower_bits.word_16 = file_descriptor & 0x0000FFFF;
-            upper_bits.word_16 = (file_descriptor & 0xFFFF0000) >> 16;
-            update_register(9, lower_bits, registers);
-            update_register(10, upper_bits, registers);
-            open_files[id] = file_descriptor;
-            break;
-        } 
-
-        case 9: // close file
-            for (size_t i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
-                // get the IDs of open_files[i] and the target file, cast to ints, and set open_files[i] to 0 to close
-                // file if they match
-                if ((int)((open_files[i] & 0xFC000000) >> 16) == (int)(get_register(10, registers).word_16 & 0xFC00))
-                    open_files[i] = 0;
-            }
-            break;
-
-        case 10: { // read $g7 bytes of data from HD pointer in $g8, $g9 into memory starting at $ra
-            
-        }
-
-        case 11: // write num of bytes in $g7, starting at addr in $ra to file pointer in $g8, $g9
-        case 12: // Beep freq in $g8 for milliseconds in $g9
+        case 8:  // open file with name in str starting at addr in $g9, in mode in $g8
+        case 9:  // read block of data from opened file into addr starting at $g9, offset block by $g8
+        case 10: // write byte in $g8 to file to block in $ua, byte index in $g9
+        case 11: // close file
+        case 12: // MIDI out, MIDI code in $g9
         case 13: // get system time into $g8 and $g9
         case 14: // sleep for milliseconds in $g8, $g9
             printf("Valid unimplemented syscall detected!\n");

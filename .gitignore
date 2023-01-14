@@ -1,6 +1,6 @@
 *.exe
 *.ird
-*.img
+*.drive
 .vscode
 
 programs
