@@ -11,19 +11,7 @@
 
 
 // array of all open file descriptors
-uint32_t open_files[0xFF] = {
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+uint32_t open_files[0x3F] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -50,12 +38,14 @@ void print_open_files() {
  * a FATPtr* to the start of that file, or NULL if the file could not be opened
  * for any reason.
  * 
+ * @param image The image of the harddrive
  * @param process The process opening the file
  * @param registers The system registers
  * @param ram The system RAM
  * @return A FATPtr* to the start of the file, or NULL if fails to open
  */
-FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
+FATPtr* open_file_routine(FILE* image, Process* process, Register* registers, RAM* ram) {
+    fseek(image, 0x8800, SEEK_SET);
     char* ascii_buffer = malloc(128 * sizeof(wchar_t));
     uint32_t addr_buffer = get_physical_from_logical_addr(process->id,
                             (get_register(10, registers).word_16 << 16) | 
@@ -71,22 +61,9 @@ FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
     }
     ascii_buffer[index] = '\0';
     
-    // open the file
-    FILE* image = fopen("os/filesystem/harddrive.img", "rb");
-    if (image == NULL) {
-        printf("Could not open hard drive - image could not be found!\n");
-        return NULL;
-    }
-    
-    Metadata* metadata = malloc(sizeof(Metadata));
-    read_sys_metadata(image, metadata);    
-    scan_FAT_into_RAM(image, metadata);
-    free(metadata);
-
-    fseek(image, 0x8800, SEEK_SET);
+    printf("Getting: %s\n", ascii_buffer);
     FATPtr* fileptr = f_open(image, ascii_buffer);
     free(ascii_buffer);
-    fclose(image);
 
     return fileptr;
 }
@@ -101,9 +78,11 @@ FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
  * @param id ID of the file
  * @return The 32 bit file descriptor
  */
-uint32_t generate_file_descriptor(int cluster, int offset, int id) {
+uint32_t generate_file_descriptor(int cluster, int offset, int read, int write, int id) {
     uint32_t descriptor = 0;
-    descriptor |= (id & 0x00FF) << 24;
+    descriptor |= (id & 0x003F) << 26;
+    descriptor |= (read & 1) << 25;
+    descriptor |= (write & 1) << 24;
     descriptor |= (offset & 0x0FFF) << 12;
     descriptor |= cluster & 0x0FFF;
 
@@ -111,15 +90,21 @@ uint32_t generate_file_descriptor(int cluster, int offset, int id) {
 }
 
 
-/*
-Takes a code relating to an interrupt code to handle and acts appropriately. Currently, only 
-program interrupts (a.k.a "syscalls") are handled, although system and external interrupts
-will come eventually.
-
-When reading or printing, the `printable` union should be used for integers and floats. This 
-ensures they can be represented and printed properly.
-*/
-void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, Process* process) {
+/**
+ * @brief Takes a code relating to an interrupt code to handle and acts appropriately. Currently, only 
+ * program interrupts (a.k.a "syscalls") are handled, although system and external interrupts
+ * will come eventually.
+ * 
+ * @note When reading or printing, the `printable` union should be used for integers and floats. This 
+ * ensures they can be represented and printed properly.
+ * 
+ * @param code The interrupt code
+ * @param registers The system registers
+ * @param ram The system RAM
+ * @param process The process calling the interrupt
+ * @param hd_img File pointer to the image of the harddrive
+ */
+void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, Process* process, FILE* hd_img) {
     // represent values that can be read or printed
     union {
         int i;
@@ -211,7 +196,10 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             update_register(10, lower_bits, registers);
             break;
 
-        case 8: { // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
+        // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
+        // if $g7 = 0, then file may not be read or written, if 1, it is write-only, if 2, it is read-only, if
+        // 3, then it is read-write enabled.
+        case 8: {
             // determine a vaid file ID or exit if one cannot be found
             uint8_t id = 0xFF;
             int found = 0;
@@ -220,15 +208,21 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
                     id = i;
                     found = 1;
                     break;
-                }   
+                } 
             }
 
             if (found = 0)
                 break;
+            printf("ID: %d\n", id);
 
             // generate file descriptor and put into registers
-            addr_buffer = open_file_routine(process, registers, ram)->start_sector;
-            file_descriptor = generate_file_descriptor(addr_buffer, 0, id);
+            FATPtr* file = open_file_routine(hd_img, process, registers, ram);
+            int flags = get_register(8, registers).word_16;
+            if (file->file_context->DIR_Attr & 0b011000 != 0) // if a volume or directory, it is no-read, no-write
+                file_descriptor = generate_file_descriptor(file->start_sector, 0, 0, 0, id);
+            else
+                file_descriptor = generate_file_descriptor(file->start_sector, 0, flags & 0b10, flags & 0b01, id);
+            printf("descriptor: 0x%08X\n", file_descriptor);
 
             lower_bits.word_16 = file_descriptor & 0x0000FFFF;
             upper_bits.word_16 = (file_descriptor & 0xFFFF0000) >> 16;
@@ -242,14 +236,17 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             for (size_t i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
                 // get the IDs of open_files[i] and the target file, cast to ints, and set open_files[i] to 0 to close
                 // file if they match
-                if ((int)((open_files[i] & 0xFF000000) >> 16) == (int)(get_register(10, registers).word_16 & 0xFF00))
+                if ((int)((open_files[i] & 0xFC000000) >> 16) == (int)(get_register(10, registers).word_16 & 0xFC00))
                     open_files[i] = 0;
             }
             break;
 
-        case 10: // read $g7 bytes of data from HD pointer in $g8, $g9
-        case 11: // write byte in $g7 to file pointer in $g8, $g9 (writes to buffer, OUT 0 writes to disk)
-        case 12: // MIDI out, MIDI code in $g9
+        case 10: { // read $g7 bytes of data from HD pointer in $g8, $g9 into memory starting at $ra
+            
+        }
+
+        case 11: // write num of bytes in $g7, starting at addr in $ra to file pointer in $g8, $g9
+        case 12: // Beep freq in $g8 for milliseconds in $g9
         case 13: // get system time into $g8 and $g9
         case 14: // sleep for milliseconds in $g8, $g9
             printf("Valid unimplemented syscall detected!\n");

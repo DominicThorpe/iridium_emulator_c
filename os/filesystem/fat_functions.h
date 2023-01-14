@@ -21,6 +21,8 @@ typedef struct fatptr {
     int current_pos;
 } FATPtr;
 
+
+FILE* init_harddrive(char* image_path);
 FATPtr* f_open(FILE* image, char* dir);
 void f_seek(FATPtr* fileptr, long offset, short whence);
 void f_read(FATPtr* fileptr, long bytes, char* buffer);

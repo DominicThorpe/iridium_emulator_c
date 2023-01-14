@@ -51,6 +51,31 @@ void scan_FAT_into_RAM(FILE* image, Metadata* metadata) {
 
 
 /**
+ * @brief Initialises the harddrive by loading the hd image and scanning the FAT into RAM
+ * before going to the start of the FAT
+ * 
+ * @param image_path Path to the harddrive image
+ * @return File pointer to the harddrive image
+ */
+FILE* init_harddrive(char* image_path) {
+    // open the file
+    FILE* image = fopen(image_path, "rb");
+    if (image == NULL) {
+        printf("Could not open hard drive - image could not be found!\n");
+        return NULL;
+    }
+    
+    Metadata* metadata = malloc(sizeof(Metadata));
+    read_sys_metadata(image, metadata);
+    scan_FAT_into_RAM(image, metadata);
+    free(metadata);
+
+    fseek(image, 0x8800, SEEK_SET);
+    return image;
+}
+
+
+/**
  * @brief Goes into the given directory, gets all the files in it 1-by-1, assigns long filenames to 
  * them if neccessary, and prints them using print_directory.
  * 

@@ -13,6 +13,7 @@
 #define STACK_PAGE 's'
 
 #include <stdint.h>
+#include <stdio.h>
 #include "../internal_memory.h"
 #include "../registers.h"
 #include "../ALU.h"
@@ -59,7 +60,7 @@ void init_processes();
 void init_MMU();
 
 Process* new_process(uint8_t id, uint16_t* binary_buffer, long prog_len, RAM* ram);
-void execute_scheduled_processes(RAM* ram, Register* registers);
+void execute_scheduled_processes(RAM* ram, Register* registers, FILE* hd_img);
 
 MMUEntry* request_new_page(Process* process, char type);
 uint32_t allocate_memory(HeapBlock* root, uint32_t size);
