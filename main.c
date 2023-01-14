@@ -5,6 +5,7 @@
 #include "internal_memory.h"
 #include "control_unit.h"
 #include "os/microkernel.h"
+#include "os/interrupt_handler.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -56,6 +57,8 @@ int main(int argc, char *argv[]) {
     print_RAM(ram);
     execute_scheduled_processes(ram, register_file);
     print_registers(register_file);
+
+    print_open_files();
     
     return 0;
 }

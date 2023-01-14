@@ -10,6 +10,41 @@
 #include "../internal_memory.h"
 
 
+// array of all open file descriptors
+uint32_t open_files[0xFF] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+}; 
+
+
+/**
+ * @brief Prints the array of open file descriptors
+ */
+void print_open_files() {
+    for (int i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
+        if (i % 16 == 0)
+            printf("\n");
+        printf("0x%08X, ", open_files[i]);
+    }
+    
+    printf("\n");
+}
+
+
 /**
  * @brief Opens a file with the address in the registers $g8 and $g9, and returns
  * a FATPtr* to the start of that file, or NULL if the file could not be opened
@@ -51,6 +86,7 @@ FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
     fseek(image, 0x8800, SEEK_SET);
     FATPtr* fileptr = f_open(image, ascii_buffer);
     free(ascii_buffer);
+    fclose(image);
 
     return fileptr;
 }
@@ -58,21 +94,16 @@ FATPtr* open_file_routine(Process* process, Register* registers, RAM* ram) {
 
 /**
  * @brief Generates a 32-bit file descriptor with bits 0:11 being for the currently pointed
- * to cluster, 12:23 for the byte, 24 is 1 if read mode is on, 25 is for if write mode is
- * on, and 26:31 is for the file ID.
+ * to cluster, 12:23 for the byte, and 24:31 is for the file ID.
  * 
  * @param cluster The cluster being pointed to
  * @param offset The byte in the cluster being pointed to
- * @param read 1 if in 'r' or 'r+' mode, otherwise 0
- * @param write 1 if in 'w' or 'w+' mode, otherwise 0
  * @param id ID of the file
  * @return The 32 bit file descriptor
  */
-uint32_t generate_file_descriptor(int cluster, int offset, int read, int write, int id) {
+uint32_t generate_file_descriptor(int cluster, int offset, int id) {
     uint32_t descriptor = 0;
-    descriptor |= (id & 0x003F) << 26;
-    descriptor |= (read & 0x0001) << 25;
-    descriptor |= (write & 0x0001) << 24;
+    descriptor |= (id & 0x00FF) << 24;
     descriptor |= (offset & 0x0FFF) << 12;
     descriptor |= cluster & 0x0FFF;
 
@@ -180,17 +211,42 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             update_register(10, lower_bits, registers);
             break;
 
-        case 8:  // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
+        case 8: { // open file with name in str starting at addr in $g8, $g9, file descriptor put into $g8, $g9
+            // determine a vaid file ID or exit if one cannot be found
+            uint8_t id = 0xFF;
+            int found = 0;
+            for (int i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
+                if (open_files[i] == 0) {
+                    id = i;
+                    found = 1;
+                    break;
+                }   
+            }
+
+            if (found = 0)
+                break;
+
+            // generate file descriptor and put into registers
             addr_buffer = open_file_routine(process, registers, ram)->start_sector;
-            file_descriptor = generate_file_descriptor(addr_buffer, 0, 0, 0, 0);
+            file_descriptor = generate_file_descriptor(addr_buffer, 0, id);
 
             lower_bits.word_16 = file_descriptor & 0x0000FFFF;
             upper_bits.word_16 = (file_descriptor & 0xFFFF0000) >> 16;
             update_register(9, lower_bits, registers);
             update_register(10, upper_bits, registers);
+            open_files[id] = file_descriptor;
             break;
+        } 
 
         case 9: // close file
+            for (size_t i = 0; i < sizeof(open_files) / sizeof(uint32_t); i++) {
+                // get the IDs of open_files[i] and the target file, cast to ints, and set open_files[i] to 0 to close
+                // file if they match
+                if ((int)((open_files[i] & 0xFF000000) >> 16) == (int)(get_register(10, registers).word_16 & 0xFF00))
+                    open_files[i] = 0;
+            }
+            break;
+
         case 10: // read $g7 bytes of data from HD pointer in $g8, $g9
         case 11: // write byte in $g7 to file pointer in $g8, $g9 (writes to buffer, OUT 0 writes to disk)
         case 12: // MIDI out, MIDI code in $g9

@@ -8,5 +8,6 @@
 
 
 void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, Process* process);
+void print_open_files();
 
 #endif
