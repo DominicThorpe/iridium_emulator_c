@@ -11,6 +11,20 @@
 
 
 uint16_t* FAT = NULL;
+int num_open_files = 0;
+const int max_open_files = 256;
+FATPtr** open_files = NULL;
+
+
+void print_open_files() {
+    printf("ID\tSector 0\tName\n");
+    for (int i = 0; i < max_open_files; i++) {
+        if (open_files[i] == NULL)
+            continue;
+        
+        printf("%d\t0x%04X\t\t%s\n", open_files[i]->id, open_files[i]->start_sector, open_files[i]->file_context->DIR_Name);
+    }
+}
 
 
 long get_addr_from_cluster(long cluster_num, Metadata* metadata) {
@@ -50,6 +64,12 @@ void scan_FAT_into_RAM(FILE* image, Metadata* metadata) {
  * @return Pointer to the harddrive image file 
  */
 FILE* init_harddrive(Metadata* metadata) {
+    open_files = malloc(max_open_files * sizeof(FATPtr*));
+    for (int i = 0; i < max_open_files; i++) {
+        open_files[i] = NULL;
+    }
+    
+
     FILE* image = fopen("os/filesystem/harddrive.img", "rb");
     metadata = malloc(sizeof(Metadata));
     read_sys_metadata(image, metadata);
@@ -113,9 +133,9 @@ Filedir* iterate_directory(FILE* image, int addr, int* num_dirs) {
 
 
 // Creates a new FATPtr struct from the Filedir struct and system metadata provided.
-FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root) {
+FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root, uint8_t id) {
     FATPtr* fatptr = malloc(sizeof(FATPtr));
-    FILE* fileptr = fopen("fat16.img", "r");
+    FILE* fileptr = fopen("os/filesystem/harddrive.img", "r");
     
     // go to the correct addr according to cluster if not root, else go to 0x8800
     int cluster_num = (long)filedir->DIR_FstClusHI << 16 | filedir->DIR_FstClusLO;
@@ -130,6 +150,7 @@ FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root) {
     fatptr->start_sector = cluster_num;
     fatptr->next_sector = FAT[cluster_num];
     fatptr->current_pos = 0;
+    fatptr->id = id;
 
     return fatptr;
 }
@@ -141,11 +162,25 @@ different sections, then goes through each of them until it gets to the correct 
 returns the file pointer. 
 */
 FATPtr* f_open(FILE* image, char* dir) {
+    // determine id for the new file
+    int id = -1;
+    for (int i = 0; i < max_open_files; i++) {
+        if (open_files[i] == NULL) {
+            id = i;
+            break;
+        }
+    }
+
+    if (id == -1)
+        return NULL;
+    
+    // get the neccessary system metadata
     long current_pos = ftell(image);
     Metadata* sys_metadata = malloc(sizeof(Metadata));
     read_sys_metadata(image, sys_metadata);
     fseek(image, current_pos, SEEK_SET);
 
+    // if this is the root directory
     Filedir* filedir = malloc(sizeof(Filedir));
     if ((dir[0] == '/' && strlen(dir) == 1) || strlen(dir) == 0) {
         const long root_dir_addr = ((sys_metadata->BPB_RsvdSecCnt + (sys_metadata->BPB_NumFATs * sys_metadata->BPB_FATz16)) 
@@ -153,7 +188,7 @@ FATPtr* f_open(FILE* image, char* dir) {
 
         filedir->DIR_FstClusHI = 0xFFFF;
         filedir->DIR_FstClusLO = 0xFFFA;
-        FATPtr* root_ptr = create_new_FAT_ptr(filedir, sys_metadata, 1);
+        FATPtr* root_ptr = create_new_FAT_ptr(filedir, sys_metadata, 1, id);
         fseek(root_ptr->fileptr, root_dir_addr, SEEK_SET);
 
         free(filedir);
@@ -196,11 +231,14 @@ FATPtr* f_open(FILE* image, char* dir) {
         return f_open(image, remaining_dir + 1);
     }
 
+
     // create a FATPtr struct to hold the details of the file and then return it
-    FATPtr* fatptr = create_new_FAT_ptr(filedir, sys_metadata, 0);
+    FATPtr* fatptr = create_new_FAT_ptr(filedir, sys_metadata, 0, id);
+    open_files[id] = fatptr;
     free(filedir);
     free(dir_copy);
 
+    num_open_files++;
     return fatptr;
 }
 

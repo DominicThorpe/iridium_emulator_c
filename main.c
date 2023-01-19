@@ -58,6 +58,8 @@ int main(int argc, char *argv[]) {
     print_processes();
     execute_scheduled_processes(ram, register_file, hd_img);
     print_registers(register_file);
+
+    print_open_files();
     
     return 0;
 }

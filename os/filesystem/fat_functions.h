@@ -19,6 +19,7 @@ typedef struct fatptr {
     long start_sector;
     long next_sector;
     int current_pos;
+    uint8_t id;
 } FATPtr;
 
 FILE* init_harddrive(Metadata* metadata);
@@ -28,6 +29,7 @@ void f_read(FATPtr* fileptr, long bytes, char* buffer);
 void f_close(FATPtr* fileptr);
 Filedir* iterate_directory(FILE* image, int addr, int* num_dirs);
 long get_addr_from_cluster(long cluster_num, Metadata* metadata);
+void print_open_files();
 
 
 #endif
