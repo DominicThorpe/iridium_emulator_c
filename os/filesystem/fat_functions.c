@@ -16,6 +16,7 @@ const int max_open_files = 256;
 FATPtr** open_files = NULL;
 
 
+/** @brief Prints the ID, start sector, and name of all the open files. */
 void print_open_files() {
     printf("ID\tSector 0\tName\n");
     for (int i = 0; i < max_open_files; i++) {
@@ -27,6 +28,13 @@ void print_open_files() {
 }
 
 
+/**
+ * @brief Get the start address of a given cluster number
+ * 
+ * @param cluster_num The cluster number to get the address of
+ * @param metadata The filesystem metadata 
+ * @return The address of the start of the cluster
+ */
 long get_addr_from_cluster(long cluster_num, Metadata* metadata) {
     const int sector_offset_for_root = 4;
     const long root_dir_addr = ((metadata->BPB_RsvdSecCnt + (metadata->BPB_NumFATs * metadata->BPB_FATz16)) 
@@ -81,11 +89,16 @@ FILE* init_harddrive(Metadata* metadata) {
 }
 
 
-/*
-Goes into the given directory, gets all the files in it 1-by-1, assigns long filenames to them if
-neccessary, and prints them using print_directory
-TODO: decouple the print dir and iterate dir functions
-*/
+/**
+ * @brief Goes into the given directory, gets all the files in it 1-by-1, assigns long filenames to 
+ * them if neccessary, and returns array of dirs found and number of dirs found goes into the num_dirs
+ * pointer.
+ * 
+ * @param image Image of the harddrive
+ * @param addr Address of the start of the dir to iterate
+ * @param num_dirs The number of directories found
+ * @return Filedir* Array of directories found, number of dirs found put into num_dirs ptr
+ */
 Filedir* iterate_directory(FILE* image, int addr, int* num_dirs) {
     fseek(image, addr, SEEK_SET);
     Filedir fdir;
@@ -132,7 +145,15 @@ Filedir* iterate_directory(FILE* image, int addr, int* num_dirs) {
 }
 
 
-// Creates a new FATPtr struct from the Filedir struct and system metadata provided.
+/**
+ * @brief Create a new FAT ptr object
+ * 
+ * @param filedir The file the new pointer will point to
+ * @param sys_metadata The system metadata
+ * @param root The start of the file
+ * @param id The id of the file
+ * @return FATPtr* Abstracted file pointer to the file
+ */
 FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root, uint8_t id) {
     FATPtr* fatptr = malloc(sizeof(FATPtr));
     FILE* fileptr = fopen("os/filesystem/harddrive.img", "r");
@@ -156,11 +177,15 @@ FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root, u
 }
 
 
-/*
-Goes to the root directory and uses the strtok function to split the directory passed up into its
-different sections, then goes through each of them until it gets to the correct directory, then
-returns the file pointer. 
-*/
+/**
+ * @brief Goes to the root directory and uses the strtok function to split the directory passed up into 
+ * its different sections, then goes through each of them until it gets to the correct directory, then
+ * returns the file pointer. 
+ * 
+ * @param image File pointer to image of the harddrive
+ * @param dir The file directory being opened
+ * @return FATPtr* Abstracted pointer to the file on the disk 
+ */
 FATPtr* f_open(FILE* image, char* dir) {
     // determine id for the new file
     int id = -1;
@@ -243,14 +268,15 @@ FATPtr* f_open(FILE* image, char* dir) {
 }
 
 
-/*
-Goes from a given position in the file "whence" where:
-    0 - the start of the file
-    1 - the current position in the file
-
-And moves the file pointer to that position.
-TODO: maybe add SEEK_END?
-*/
+/**
+ * @brief Goes from a given position in the file
+ * 
+ * @param fileptr The abstracted pointer to the file
+ * @param offset Amount to move the pointer by
+ * @param whence Position to move the pointer from, 0 = start of the file, 1 = current position
+ * 
+ * @todo Add in an end of file whence
+ */
 void f_seek(FATPtr* fileptr, long offset, short whence) {
     if (offset == 0)
         return;
@@ -283,19 +309,23 @@ void f_seek(FATPtr* fileptr, long offset, short whence) {
 }
 
 
-/*
-Reads "vol" bytes from the current position onwards in the file into the buffer and moves the file 
-pointer that many bytes onwards.
-*/
+/**
+ * @brief Reads "vol" bytes from the current position onwards in the file into the buffer and moves 
+ * the file pointer that many bytes onwards.
+ * 
+ * @param fileptr FATPtr to the location on the disk to read
+ * @param bytes The number of bytes to read
+ * @param buffer Buffer to read the results into
+ * 
+ * @todo Handle end of file by returning 0, error by returning negative, and success by returning no.
+ * bytes read.
+ */
 void f_read(FATPtr* fileptr, long bytes, char* buffer) {
     // if the file is a directory or a volume, do not allow it to be opened
     if ((fileptr->file_context->DIR_Attr & 0b011000) != 0) {
         printf("CANNOT READ DIRECTORY OR VOLUME: %s, %X!\n", fileptr->file_context->DIR_Name, fileptr->file_context->DIR_Attr);
         return;
     }
-
-    // long new_addr = get_addr_from_cluster(fileptr->sector_num, fileptr->sys_context);
-    // fseek(fileptr->fileptr, new_addr + fileptr->current_pos, SEEK_SET);
 
     long index = 0;
     while (bytes > 0) {
@@ -315,12 +345,14 @@ void f_read(FATPtr* fileptr, long bytes, char* buffer) {
             bytes = 0;
         }
     }
-
-    printf("SectorB: %X.%X, %X\n", fileptr->sector_num, fileptr->current_pos, ftell(fileptr->fileptr));
 }
 
 
-// Takes a file pointer and frees it, including the internal C FILE* pointer
+/**
+ * @brief Takes a file pointer and frees it, including the internal C FILE* pointer
+ * 
+ * @param fileptr The file pointer abstraction to be freed
+ */
 void f_close(FATPtr* fileptr) {
     fclose(fileptr->fileptr);
     free(fileptr);
