@@ -357,3 +357,14 @@ void f_close(FATPtr* fileptr) {
     fclose(fileptr->fileptr);
     free(fileptr);
 }
+
+
+/**
+ * @brief Get an opened file by its id, return NULL if not found.
+ * 
+ * @param id The id of the file to get
+ * @return FATPtr* of the file, or NULL if not found
+ */
+FATPtr* get_open_file_id(int id) {
+    return open_files[id];
+}

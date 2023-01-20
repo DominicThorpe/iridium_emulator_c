@@ -130,7 +130,24 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             break;
         } 
 
-        case 9:  // read no. bytes in $g8 from file id in $g9 into buffer at $ua, $g7
+        case 9: { // read no. bytes in $g8 from file id in $g9 into buffer at $ua, $g7
+            print_open_files();
+            FATPtr* fileptr = get_open_file_id(GET_REG_VAL(10));
+
+            // read the data from the file
+            const int data_len = GET_REG_VAL(9);
+            char* buffer = malloc(data_len);
+            f_read(fileptr, data_len, buffer);
+            
+            // put the read data into RAM
+            uint32_t buffer_addr = (GET_REG_VAL(11) << 16) | GET_REG_VAL(8);
+            for (int i = 0; i < data_len; i++) {
+                add_to_ram(ram, get_physical_from_logical_addr(process->id, buffer_addr + i), buffer[i]);
+            }
+
+            break;
+        }
+
         case 10: // write no. bytes in $g8 into file id in $g9 into buffer at $ua, $g7
         case 11: // close file
         case 12: // MIDI out, MIDI code in $g9

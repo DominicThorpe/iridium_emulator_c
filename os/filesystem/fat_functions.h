@@ -30,6 +30,6 @@ void f_close(FATPtr* fileptr);
 Filedir* iterate_directory(FILE* image, int addr, int* num_dirs);
 long get_addr_from_cluster(long cluster_num, Metadata* metadata);
 void print_open_files();
-
+FATPtr* get_open_file_id(int id);
 
 #endif
