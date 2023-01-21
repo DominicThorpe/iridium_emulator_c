@@ -18,7 +18,7 @@ uint16_t* read_commands(char* filename, long* prog_len) {
     uint16_t *buffer;
     long filelen;
 
-    fileptr = fopen(filename, "rb");
+    fileptr = fopen(filename, "r+b");
 
     // determine length of file
     fseek(fileptr, 0, SEEK_END);

@@ -78,7 +78,7 @@ FILE* init_harddrive(Metadata* metadata) {
     }
     
 
-    FILE* image = fopen("os/filesystem/harddrive.img", "rb");
+    FILE* image = fopen("os/filesystem/harddrive.img", "r+b");
     metadata = malloc(sizeof(Metadata));
     read_sys_metadata(image, metadata);
 
@@ -156,7 +156,7 @@ Filedir* iterate_directory(FILE* image, int addr, int* num_dirs) {
  */
 FATPtr* create_new_FAT_ptr(Filedir* filedir, Metadata* sys_metadata, int root, uint8_t id) {
     FATPtr* fatptr = malloc(sizeof(FATPtr));
-    FILE* fileptr = fopen("os/filesystem/harddrive.img", "r");
+    FILE* fileptr = fopen("os/filesystem/harddrive.img", "r+");
     
     // go to the correct addr according to cluster if not root, else go to 0x8800
     int cluster_num = (long)filedir->DIR_FstClusHI << 16 | filedir->DIR_FstClusLO;
@@ -358,7 +358,6 @@ void f_close(FATPtr* fileptr, int id) {
     free(fileptr);
     free(open_files[id]);
     open_files[id] = NULL;
-    printf("Closed: %d\n", id);
 }
 
 
@@ -370,4 +369,46 @@ void f_close(FATPtr* fileptr, int id) {
  */
 FATPtr* get_open_file_id(int id) {
     return open_files[id];
+}
+
+
+/**
+ * @brief Writes the specified number of bytes from the buffer to the file, starting at the file
+ * pointer's current position.
+ * 
+ * @param fileptr Pointer to the file to write to
+ * @param bytes The number of bytes to write
+ * @param buffer Buffer to write bytes from
+ * @return The number of bytes written, or -1 if the write failed
+ * 
+ * @exception Cannot write to a directory (i.e. folder) or volume
+ */
+long f_write(FATPtr* fileptr, long bytes, char* buffer) {
+    long target = bytes;
+
+    // if the file is a directory or a volume, do not allow it to be opened
+    if ((fileptr->file_context->DIR_Attr & 0b011000) != 0) {
+        printf("CANNOT READ DIRECTORY OR VOLUME: %s, %X!\n", fileptr->file_context->DIR_Name, fileptr->file_context->DIR_Attr);
+        return -1;
+    }
+
+    long index = 0;
+    while (bytes > 0) {
+        if (fileptr->current_pos + bytes >= 0x800 && fileptr->sector_num < 0xFFF8) {
+            fwrite(buffer + index, 1, 0x800 - fileptr->current_pos, fileptr->fileptr);
+            bytes -= 0x800 - fileptr->current_pos;
+            index += 0x800 - fileptr->current_pos;
+
+            fileptr->sector_num = fileptr->next_sector;
+            fileptr->next_sector = fileptr->sector_num < 0xFFF8 ? FAT[fileptr->sector_num] : -1;
+            fileptr->current_pos = 0;
+        } else {
+            fwrite(buffer + index, 1, bytes, fileptr->fileptr);
+            
+            fileptr->current_pos += bytes;
+            index += bytes;
+            bytes = 0;
+        }
+    }
+    return target;
 }

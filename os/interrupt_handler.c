@@ -147,9 +147,28 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
             break;
         }
 
-        case 10: // write no. bytes in $g8 into file id in $g9 into buffer at $ua, $g7
-            printf("Valid unimplemented syscall detected!\n");
+        case 10: { // write no. bytes in $g8 into file id in $g9 into buffer at $ua, $g7
+            FATPtr* fileptr = get_open_file_id(GET_REG_VAL(10));
+
+            // write the data into the buffer and then to the file
+            const int data_len = GET_REG_VAL(9);
+            char* buffer = malloc(data_len);
+            uint32_t buffer_addr = (GET_REG_VAL(11) << 16) | GET_REG_VAL(8);
+            
+            for (long i = 0; i < data_len; i += 2) {
+                uint16_t result = (get_from_ram(ram, buffer_addr + (i / 2)));
+                buffer[i] = result & 0x00FF;
+                if (i + 1 >= data_len)
+                    break;
+                
+                buffer[i + 1] = (result & 0xFF00) >> 8;
+            }
+
+            f_write(fileptr, data_len, buffer);
+            free(buffer);
+
             break;
+        }
 
         case 11: { // close file with ID in $g9
             FATPtr* fileptr = get_open_file_id(GET_REG_VAL(10));
@@ -201,6 +220,7 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         
         case 21: // create new file
         case 22: // delete file
+        case 23: // seek number of bytes in $g8 within file id in $g9
             printf("Valid unimplemented syscall detected!\n");
             break;
         
