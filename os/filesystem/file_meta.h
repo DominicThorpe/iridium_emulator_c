@@ -5,9 +5,7 @@
 #include <stdio.h>
 
 
-/**
- * @brief Designed to store the header of a directory or file
- */
+// Designed to store the header of a directory
 typedef struct filedir {
     char*       DIR_Name;        // String with null terminator added by program
     uint8_t     DIR_Attr;        // File attributes

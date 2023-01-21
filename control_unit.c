@@ -12,7 +12,7 @@ Takes a 16-bit binary command and decomposes it into 4-bit sections. Extracts th
 from the instruction, and then executes ir appropriately, making the correct modifications to the RAM
 and registers, pointers to which are passed as parameters.
 */
-void execute_command(short command, RAM* ram, Register* registers, Process* process) {
+void execute_command(short command, RAM* ram, Register* registers, Process* process, FILE* hd_img) {
     // convert instruction to a bit field containing each nibble of data
     struct {
         unsigned int nibble_1 : 4;
@@ -114,7 +114,7 @@ void execute_command(short command, RAM* ram, Register* registers, Process* proc
             
             case 0xC: // syscall
                 code = (instr_components.nibble_3 << 4) | instr_components.nibble_4;
-                handle_interrupt_code(code, registers, ram, process);
+                handle_interrupt_code(code, registers, ram, process, hd_img);
                 break;
             
             case 0xD: // ATOM

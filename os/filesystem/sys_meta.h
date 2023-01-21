@@ -8,9 +8,7 @@
 extern uint16_t* FAT;
 
 
-/**
- * @brief Designed to store the metadata for a FAT16 image.
- */
+// Designed to store the metadata for a FAT16 image.
 typedef struct metadata {
     uint16_t    BPB_BytesPerSec;    // Bytes per sector
     uint8_t     BPB_SecPerClus;     // Sectors per cluster

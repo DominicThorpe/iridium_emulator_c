@@ -5,9 +5,8 @@
 #include "file_meta.h"
 
 
-/**
- * @brief Stores a date and a time a directory was created or last written or read
- */
+// Stores a date and a time a directory was created or last written or read
+// TODO: integrate into the initialisation of the file metadata
 typedef struct datetime {
     uint16_t year   : 7;
     uint16_t month  : 4;

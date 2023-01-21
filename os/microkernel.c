@@ -292,9 +292,10 @@ void reset_registers(Register* registers) {
  * @param register The CPU registers
  * @param process The process being executed
  * @param burst_len The number of instructions to execute
+ * @param hd_img File pointer to the harddrive image
  * @return The value in the program counter at the end of the burst, or -1 if the process completes
  */
-uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, uint32_t burst_len) {
+uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, FILE* hd_img, uint32_t burst_len) {
     if (process->started != 0)
         load_registers(process, registers, ram);
     else {
@@ -316,7 +317,7 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
         if (command == 0x0000 || command == 0xFFFF)
             return -1;
 
-        execute_command(command, ram, registers, process);
+        execute_command(command, ram, registers, process, hd_img);
         new_count.word_32 = get_register(15, registers).word_32 + 1;
         update_register(15, new_count, registers);
 
@@ -336,14 +337,18 @@ uint32_t execute_process_burst(RAM* ram, Register* registers, Process* process, 
 
 /**
  * @brief Runs all the currently active processes using round-robin scheduling.
+ * 
+ * @param ram The system RAM
+ * @param registers The system registers
+ * @param hd_img File pointer to the harddrive image
  */
-void execute_scheduled_processes(RAM* ram, Register* registers) {
+void execute_scheduled_processes(RAM* ram, Register* registers, FILE* hd_img) {
     while (num_active_processes > 0) {
         for (int i = 0; i < max_processes; i++) {
             if (processes[i] == NULL)
                 continue;
 
-            uint32_t result = execute_process_burst(ram, registers, processes[i], BURST_LEN);
+            uint32_t result = execute_process_burst(ram, registers, processes[i], hd_img, BURST_LEN);
             if (result == -1) {
                 print_registers(registers);
                 printf("\n\n");

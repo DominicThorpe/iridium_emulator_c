@@ -1,6 +1,8 @@
 #ifndef RAMHASH
 #define RAMHASH
 
+#include <stdint.h>
+
 
 /*
 Represents a node in a linked list in the RAM hashmap data structure.
@@ -24,7 +26,7 @@ typedef struct RAM {
 
 
 RAM* init_RAM(long hash_capacity);
-void add_to_ram(RAM* ram, unsigned int key, short value);
+void add_to_ram(RAM* ram, unsigned int key, uint16_t value);
 short get_from_ram(RAM* ram, unsigned int key);
 void reset_RAM();
 void print_RAM(RAM* ram);

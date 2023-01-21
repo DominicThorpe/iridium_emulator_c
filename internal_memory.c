@@ -15,6 +15,7 @@ corresponding linked list. If the address is not in the hashmap, it will return 
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "internal_memory.h"
 
 #define FALSE 0
@@ -52,22 +53,26 @@ long hash_function(int input) {
 }
 
 
-/*
-Takes a pointer to the RAM which is modified in-place (changes take effect outside the function)
-and then checks the relevant linked list according to the hash function if an element with that key 
-exists. If such an element does already exist, it is returned, otherwise it adds a RAMKeyValuePair 
-to the RAM hashmap with the key and value to the end of the linked list in the relevant bucket for
-that hash.
-*/
-void add_to_ram(RAM* ram, unsigned int key, short value) {
+/**
+ * @brief Hashes the key (RAM address) passed and adds it to RAM, represented as a linked-list hashmap
+ * 
+ * @param ram Pointer to the system RAM
+ * @param key Address to add the data to
+ * @param value The data to add to RAM
+ */
+void add_to_ram(RAM* ram, unsigned int key, uint16_t value) {
+    // get hash and create new element in the linked list
     long hash = hash_function(key);
     RAMKeyValuePair* pair = malloc(sizeof(RAMKeyValuePair));
     pair->key = key;
     pair->value = value;
     pair->next = NULL;
 
+    // if the start of the new linked list, add immediately
     if (ram->buckets[hash] == NULL)
         ram->buckets[hash] = pair;
+    
+    // otherwise go through the linked list at that hash until you get to the end and add it there
     else {
         RAMKeyValuePair* current_kvp = ram->buckets[hash];
         while (current_kvp->next != NULL) {
