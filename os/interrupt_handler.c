@@ -131,7 +131,6 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         } 
 
         case 9: { // read no. bytes in $g8 from file id in $g9 into buffer at $ua, $g7
-            print_open_files();
             FATPtr* fileptr = get_open_file_id(GET_REG_VAL(10));
 
             // read the data from the file
@@ -149,7 +148,14 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         }
 
         case 10: // write no. bytes in $g8 into file id in $g9 into buffer at $ua, $g7
-        case 11: // close file
+            printf("Valid unimplemented syscall detected!\n");
+            break;
+
+        case 11: { // close file with ID in $g9
+            FATPtr* fileptr = get_open_file_id(GET_REG_VAL(10));
+            f_close(fileptr, GET_REG_VAL(10));
+        }
+
         case 12: // MIDI out, MIDI code in $g9
         case 13: // get system time into $g8 and $g9
         case 14: // sleep for milliseconds in $g8, $g9
@@ -191,6 +197,11 @@ void handle_interrupt_code(unsigned short code, Register* registers, RAM* ram, P
         case 20: // "sbrk" syscall, increases heap into stack by $g8, $g9 pages (signed)
             sbrk_pages_offset = (get_register(10, registers).word_16 << 16) | get_register(9, registers).word_16;
             change_heap_size(sbrk_pages_offset, process);
+            break;
+        
+        case 21: // create new file
+        case 22: // delete file
+            printf("Valid unimplemented syscall detected!\n");
             break;
         
         default:

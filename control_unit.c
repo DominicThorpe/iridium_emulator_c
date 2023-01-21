@@ -190,7 +190,6 @@ void execute_command(short command, RAM* ram, Register* registers, Process* proc
                 operand_2 = GET_REG_VAL(instr_components.nibble_4);
                 upper_addr = get_register(11, registers).word_16;
 
-                printf("Loading: %08X\n", (upper_addr << 16) + (operand_1 + operand_2));
                 immediate = get_from_ram(ram, (upper_addr << 16) + (operand_1 + operand_2));
                 if (instr_components.nibble_2 < 12)
                     result_reg.word_16 = immediate;

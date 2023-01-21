@@ -353,9 +353,12 @@ void f_read(FATPtr* fileptr, long bytes, char* buffer) {
  * 
  * @param fileptr The file pointer abstraction to be freed
  */
-void f_close(FATPtr* fileptr) {
+void f_close(FATPtr* fileptr, int id) {
     fclose(fileptr->fileptr);
     free(fileptr);
+    free(open_files[id]);
+    open_files[id] = NULL;
+    printf("Closed: %d\n", id);
 }
 
 

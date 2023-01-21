@@ -61,8 +61,6 @@ long hash_function(int input) {
  * @param value The data to add to RAM
  */
 void add_to_ram(RAM* ram, unsigned int key, uint16_t value) {
-    printf("Writing 0x%04X to 0x%08X\n", value, key);
-
     // get hash and create new element in the linked list
     long hash = hash_function(key);
     RAMKeyValuePair* pair = malloc(sizeof(RAMKeyValuePair));
