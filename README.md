@@ -2,28 +2,26 @@
 
 Part of a series on my blog: [The System Fire](https://www.thesystemfire.com/).
 
-The Iridium Computer Emulator is a program written in pure C which is designed to emulate the Iridium Computer (of course). This is a custom 16-bit processor the author of this repository has designed and plans to implement using a microcontroller, probably the Raspberry Pi Zero W.
+The Iridium Computer Emulator is a program written in pure C which is designed to emulate the Iridium Computer (of course). This is a custom 16-bit processor the author of this repository has designed and plans to implement using a microcontroller, probably the Raspberry Pi Zero W. The general capabilities of the computer are aimed to be roughly equiavlent to that of the Commodore 64.
 
 
 ## The Architecture
 
-The architecture uses a custom instruction set, the specification for which can be found [here](https://github.com/DominicThorpe/iridium_assembler). There are 16 registers available, 5 of which are special-purpose, and 10 are general-purpose. 4 of the special-purpose registers are 32 bits instead of 16 so they can store complete memory addresses.
+The architecture uses a custom instruction set, the specification for which can be found [here](https://github.com/DominicThorpe/iridium_assembler). There are 16 16-bit registers available, 5 of which are special-purpose, and 11 are general-purpose. The hardware architecture is 16-bits, and can therefore address 16KiB of RAM, which is the maximum addressable by 16 bits. 
 
-The hardware architectire is 16-bits, but has a 32-bit wide address bus, so can address up to 4GB of memory, with a minimum of 8KB being ROM, 64KB being for video memory, and 32KB being for the kernel, leaving most of the ram available for user programs.
-
-There is also support for a number of I/O devices. We plan to support an SD Card for the hard drive, video and sound output, and a keyboard. There may also be mouse support, but this is not yet decided.
+There will also be support for a number of I/O devices. We plan to support an SD Card for the hard drive, video and sound output, and a keyboard. There may also be mouse support, but this is not yet decided.
 
 
 ### Memory Map
 
-Because we have an address space of 4GB, we know we can have *up to* 4GB of RAM/ROM, but we don't know how much we will actually have. When we implement a microprocessor version of this system, this amount will be much less than 1GB.
-
-Each process has access to 1Mb of stack, and another 1Mb of heap memory, with the heap starting at the bottom and the stack at the top. The high water mark of the heap can be adjusted via syscall 19 (aka *sbrk*). The code for a process goes at the start of process memory, followed by non-text data, and text data has its own section, followed by the heap and stack.
+The memory map has yet to be fully determined whilst the emulator is adapted to a fully 16-bit architecture.
 
 Memory is allocated on the stack using the *friend system*, wherein the heap is organised into a binary tree with each level being a certain block size. When allocating memory, the tree is traversed to find a block of the right size. If one cannot be found, a large, free block is split into 2 recursively until a best-fit is found. Find out more about this technique [here](https://www.geeksforgeeks.org/buddy-system-memory-allocation-technique/).
 
 
 ## Current Progress
+
+Currently migrating from a mixed 32/16-bit architecture to a full 16-bit architecture.
 
 This project is still a WIP with a lot left to go. The roadmap is as follows, and always check the blog to see current progress:
   - Memory
@@ -52,11 +50,7 @@ This project is still a WIP with a lot left to go. The roadmap is as follows, an
       - [ ] Into RAM from hard drive image
 
   - Operating System
-    - Microkernel
-      - [x] Paging
-      - [x] Memory Management
-      - [x] Process Scheduling
-
+    - [x] Memory Management
     - [ ] Filesystwm
     - [ ] Interrupt Handler
     - [ ] System UI
