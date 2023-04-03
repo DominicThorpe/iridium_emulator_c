@@ -1,18 +1,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+
 #include "registers.h"
 #include "internal_memory.h"
 #include "control_unit.h"
-#include "os/microkernel.h"
-#include "os/interrupt_handler.h"
-#include "os/filesystem/fat_functions.h"
 
 #define TRUE 1
 #define FALSE 0
 
 
-// Reads bytes from the specified file and outputs those bytes as a pointer to an array
+/**
+ * @brief Reads bytes from the specified file and outputs those bytes as a pointer to an array
+ * 
+ * @param filename Name of the file to read the program from
+ * @param prog_len Pointer in which the length of the file is placed
+ * @return uint16_t* Array of the commands the file contains
+ */
 uint16_t* read_commands(char* filename, long* prog_len) {
     FILE *fileptr;
     uint16_t *buffer;
@@ -41,25 +45,20 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
 
-    Register* register_file = init_registers();
-    RAM* ram = init_RAM(1024);
+    uint16_t* register_file = init_registers();
+    uint8_t* RAM = init_RAM();
 
     // read program data into RAM
     long prog_len_a;
-    uint16_t* commands_a = read_commands(argv[1], &prog_len_a);
+    uint16_t* commands = read_commands(argv[1], &prog_len_a);
+
+    uint16_t pc = 0;
+    while (commands[pc] != 0x0000) {
+        /* code */
+    }
     
-    Metadata* hd_metadata;
-    FILE* hd_img = init_harddrive(hd_metadata);
-
-    init_MMU();
-    init_processes();
-    Process* process_a = new_process(0, commands_a, prog_len_a, ram);
-
-    print_processes();
-    execute_scheduled_processes(ram, register_file, hd_img);
+    
     print_registers(register_file);
-    
-    print_open_files();
 
     return 0;
 }

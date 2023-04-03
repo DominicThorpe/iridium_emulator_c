@@ -13,29 +13,16 @@ Test that ALU addition does the following:
   - sets the flags correctly
 */
 void test_add() {
-    Register* registers = init_registers();
-    Register new_reg;
+    uint16_t* registers = init_registers();
+    uint16_t new_reg;
 
     // Check will not change the $zero register
     addition(5, 5, 0, registers);
-    assert(get_register(0, registers).word_16 == 0);
+    assert(get_register(0, registers) == 0);
 
     // Check will add 16-bit registers
     addition(0x4444, 0x4321, 1, registers);
-    assert(get_register(1, registers).word_16 == 0x8765);
-
-    // Check will add 32-bit registers (will only add the 1st 16 bits and AND them 
-    // into the 1st 16-bits of the 32 bit-reg)    
-    new_reg.word_32 = 0x55555555;
-    update_register(13, new_reg, registers);
-    addition(0x5555, 0xF123, 13, registers);
-    assert(get_register(13, registers).word_32 == 0x55554678);
-
-    // Check will properly add a 16-bit to a 32-bit register
-    new_reg.word_32 = 0xAAAAAAAA;
-    update_register(13, new_reg, registers);
-    addition(0x1234, 0xAAAA, 13, registers);
-    assert(get_register(13, registers).word_32 == 0xAAAABCDE);
+    assert(get_register(1, registers) == 0x8765);
 
     // Check sets flags correctly
     addition(0, 0, 1, registers);
@@ -65,28 +52,16 @@ Test that the ALU can do the following:
   - sets the flags correctly
 */
 void test_subtraction() {
-    Register* registers = init_registers();
-    Register new_reg;
+    uint16_t* registers = init_registers();
+    uint16_t new_reg;
 
     // Check will not change the $zero register
     addition(8, 5, 0, registers);
-    assert(get_register(0, registers).word_16 == 0);
+    assert(get_register(0, registers) == 0);
 
     // Check will subtract 16-bit registers properly
     subtraction(10, 5, 1, registers);
-    assert(get_register(1, registers).word_16 == 5);
-
-    // Check will subtract 32-bit registers (will only add the 1st 16 bits and AND them 
-    // into the 1st 16-bits of the 32 bit-reg)    
-    new_reg.word_32 = 0x55555555;
-    update_register(13, new_reg, registers);
-    subtraction(0x5555, 0x3333, 13, registers);
-    assert(get_register(13, registers).word_32 == 0x55552222);
-
-    new_reg.word_32 = 0x55555555;
-    update_register(13, new_reg, registers);
-    subtraction(0x5555, 0x7777, 13, registers);
-    assert(get_register(13, registers).word_32 == 0x5555DDDE);
+    assert(get_register(1, registers) == 5);
 
     // Check sets the flags correctly
     subtraction(5, 5, 1, registers);
